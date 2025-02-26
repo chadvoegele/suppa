@@ -21,7 +21,7 @@ SuppaList runs entirely in the browser. You can use it at https://www.voegele.me
 ./build.py
 ```
 
-## suplistmslrs
+## suplistmlrs
 ```
 just
 ```
