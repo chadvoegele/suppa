@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "suplistml"
+version = "0.0.1"
+license = "GPL-2.0"
+license-files = [
+  "LICENSE"
+]
+requires-python = ">=3.10"
+dependencies = [
+  "pandas",
+  "numpy",
+  "scikit-learn",
+  "llama-cpp-python",
+  "tokenizers",
+  "transformers",
+  "evaluate",
+  "torch",
+  "accelerate",
+  "ipython",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/suplistml"]
+
+[project.optional-dependencies]
+build = [
+    "hatch",
+]
+dev = [
+    "ruff",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+]
+
+[tool.ruff]
+line-length = 120
