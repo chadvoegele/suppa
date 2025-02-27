@@ -13,7 +13,7 @@ SuppaList generates a shopping list from recipe ingedient lists. It combines the
 
 SuppaList runs entirely in the browser. You can use it at https://www.voegele.me/posts/suppalist/
 
-![suppalist](https://github.com/user-attachments/assets/7ce575bc-87be-4cb5-b07a-ce7f857c148e)
+![suppalist](https://github.com/user-attachments/assets/c9eeb8d8-0096-43ff-9ec3-62ff0c3d101f)
 
 # Building
 ## suplistml
