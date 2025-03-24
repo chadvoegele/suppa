@@ -36,6 +36,6 @@ describe('render', function () {
 
     const input = document.querySelector('#input')
     input.value = '1 pear\n2 apples'
-    input.dispatchEvent(new window.Event('change'))
+    input.dispatchEvent(new window.Event('input'))
   })
 })

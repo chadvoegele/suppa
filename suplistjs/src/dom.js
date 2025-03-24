@@ -41,14 +41,26 @@ export function Renderer (document, suplist) {
     output.appendChild(formattedList)
   }
 
+  function debounce (delay, func) {
+    let debounceTimer
+    return function (...args) {
+      return new Promise((resolve) => {
+        clearTimeout(debounceTimer)
+        debounceTimer = setTimeout(() => {
+          resolve(func.apply(this, args))
+        }, delay)
+      })
+    }
+  }
+
   function renderInput (output) {
     const listInput = document.createElement('textarea')
     listInput.id = 'input'
 
-    listInput.addEventListener('change', async (event) => {
+    listInput.addEventListener('input', debounce(1000, async (event) => {
       const text = event.target.value
       await setOutput(output, text)
-    })
+    }))
     return listInput
   }
 
