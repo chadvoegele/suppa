@@ -31,13 +31,13 @@ function concatUint8Arrays (arrays) {
 }
 
 async function getModel () {
-  const modelId = '1733494653'
+  const modelId = '1742819042'
   const tokenizer = await downloadUrl(`./model/tokenizer.${modelId}.json`)
   const tagTokenizer = await downloadUrl(`./model/tag_tokenizer.${modelId}.json`)
   const classTokenizer = await downloadUrl(`./model/class_tokenizer.${modelId}.json`)
   const config = await downloadUrl(`./model/config.${modelId}.json`)
-  const nWeightParts = 7
-  const weightParts = Array.from(Array(nWeightParts).keys()).map((i) => downloadUrl(`./model/model.${modelId}.safetensors.part_0${i}-of-07`))
+  const nWeightParts = 4
+  const weightParts = Array.from(Array(nWeightParts).keys()).map((i) => downloadUrl(`./model/model.${modelId}.safetensors.part_0${i}`))
   const weights = concatUint8Arrays(await Promise.all(weightParts))
 
   const model = new Model(

@@ -17,17 +17,19 @@ if (!LFS_ROOT) {
 }
 
 function resolveLfsFile (srcPath) {
-  const pointerContent = fs.readFileSync(srcPath, 'utf8')
-  const sha256Match = pointerContent.match(/oid sha256:(\w+)/)
+  const binaryContent = fs.readFileSync(srcPath)
+  const content = binaryContent.toString('utf8')
 
+  const sha256Match = content.match(/oid sha256:(\w+)/)
   if (!sha256Match) {
-    throw new Error(`Invalid LFS pointer file: ${srcPath}`)
+    return srcPath
   }
 
   const sha256 = sha256Match[1]
   const lfsFilePath = path.join(LFS_ROOT, sha256)
 
   if (!fs.existsSync(lfsFilePath)) {
+    console.warn(`LFS file not found: ${lfsFilePath}. Using original file.`)
     throw new Error(`LFS file not found: ${lfsFilePath}`)
   }
 
@@ -53,7 +55,7 @@ const modelLfsSrcPath = resolveLfsFile(modelSrcPath)
 const modelDestPrefix = path.join(outputDir, `model.${tag}.safetensors.part_`)
 
 try {
-  execSync(`split -d -b 20M "${modelLfsSrcPath}" "${modelDestPrefix}" --numeric-suffixes=00 --additional-suffix=-of-07`)
+  execSync(`split -d -b 20M "${modelLfsSrcPath}" "${modelDestPrefix}" --numeric-suffixes=00`)
   console.log(`Split ${modelSrcPath} via ${modelLfsSrcPath} into parts in ${outputDir}`)
 } catch (error) {
   console.error('Error splitting the model file:', error.message)
