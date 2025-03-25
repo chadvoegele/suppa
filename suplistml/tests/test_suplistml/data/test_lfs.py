@@ -19,6 +19,15 @@ class TestLfsOpen(TestCase):
                 data = g.read()
         self.assertEqual(data, "fake data")
 
+    def test_lfs_open_passthrough_binary(self):
+        write_data = bytes([255, 0, 127, 128, 8])
+        with NamedTemporaryFile(mode="wb+") as f:
+            f.write(write_data)
+            f.flush()
+            with lfs_open(f.name, "rb") as g:
+                read_data = g.read()
+        self.assertEqual(read_data, write_data)
+
     def test_lfs_open(self):
         with TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)

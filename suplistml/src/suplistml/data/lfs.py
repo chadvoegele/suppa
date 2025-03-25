@@ -98,8 +98,13 @@ class LfsObject:
     @classmethod
     def try_from_path(cls, path: Path):
         maximum_lfs_spec_byte_count = len(LFS_HEADER_EXAMPLE)
-        with open(path, "r") as f:
-            maybe_lfs_header = f.read(maximum_lfs_spec_byte_count)
+        with open(path, "rb") as f:
+            maybe_lfs_header_bytes = f.read(maximum_lfs_spec_byte_count)
+
+        try:
+            maybe_lfs_header = maybe_lfs_header_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            return None
 
         re_result = re.search(LFS_HEADER_REGEX, maybe_lfs_header)
 
