@@ -121,6 +121,7 @@ def run(
         per_device_train_batch_size=30,
         gradient_accumulation_steps=gradient_accumulation_steps,
     )
+
     trainer = Trainer(
         model,
         args,
@@ -149,7 +150,7 @@ def predict(output_path: Path = None):
     tag_tokenizer = get_tag_tokenizer()
     class_tokenizer = get_class_tokenizer()
 
-    model_root = Path("suplistml/models/run+1733494653")
+    model_root = Path("src/suplistml/models/run+1733494653")
     trained_model_path = model_root / "model.safetensors"
     with lfs_open(trained_model_path, "rb") as g:
         safetensors_bytes = g.read()
@@ -301,6 +302,19 @@ def reshard_model(output_path: Path):
     model.save_pretrained(save_directory=output_path / "shards", max_shard_size="20MB")
 
 
+def convert_to_16(output_path: Path):
+    model_root = Path("src/suplistml/models/run+1733494653")
+    trained_model_path = model_root / "model.safetensors"
+    with lfs_open(trained_model_path, "rb") as g:
+        safetensors_bytes = g.read()
+        state_dict = safetensors.torch.load(safetensors_bytes)
+
+    state_dict16 = {k: v.half() for k, v in state_dict.items()}
+    safetensors16_file = output_path / "model.safetensors"
+    safetensors_bytes16 = safetensors.torch.save_file(state_dict16, safetensors16_file)
+    logger.info(f"Saved 16-bit model to {safetensors16_file}")
+
+
 def main():
     seed_everything()
     module_name = resolve_module_name(__name__)
@@ -311,6 +325,7 @@ def main():
     # reshard_model(output_path)
     # test_candle()
     run(output_path)
+    # convert_to_16(output_path)
 
 
 if __name__ == "__main__" and not is_ipython():
