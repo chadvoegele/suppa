@@ -11,8 +11,8 @@ use std::error::Error;
 use std::result::Result;
 use tokenizers::tokenizer::Tokenizer;
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct ModelOutput {
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Ord, PartialOrd)]
+pub struct MetaRow {
     pub text: String,
     pub category: String,
     pub name: String,
@@ -24,7 +24,7 @@ pub fn infer_text(
     class_tokenizer: &Tokenizer,
     model: &MultiBert,
     text: String,
-) -> Result<ModelOutput, Box<dyn Error>> {
+) -> Result<MetaRow, Box<dyn Error>> {
     let device = &Device::Cpu;
 
     let encoded = tokenizer.encode(text.clone(), false);
@@ -63,7 +63,7 @@ pub fn infer_text(
         .decode(&name_input_ids.to_vec1::<u32>()?, false)
         .map_err(|e| e.to_string())?;
 
-    Ok(ModelOutput {
+    Ok(MetaRow {
         text: text,
         category: class,
         name: name,

@@ -12,8 +12,7 @@ export function Model (proxy, combiner) {
   async function suplist (text) {
     const textLines = text.split(/\n/).filter(l => l.length > 0).filter(l => !isComment(l))
     const rows = await proxy.predict(textLines)
-    const combinedRows = combiner.combine(rows)
-    const sortedRows = sortRows(combinedRows)
+    const sortedRows = sortRows(rows)
     return sortedRows
   }
 

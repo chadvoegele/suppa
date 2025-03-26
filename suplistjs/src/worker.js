@@ -52,7 +52,7 @@ async function getModel () {
 }
 
 function predict (lines) {
-  const rows = lines.map(line => { return model.run(line) })
+  const rows = model.run(lines)
   return rows
 }
 

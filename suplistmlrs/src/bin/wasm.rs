@@ -4,8 +4,10 @@
 
 use candle_core::{DType, Device};
 use candle_nn::VarBuilder;
+use std::error::Error;
 use suplistmlrs::bert::{Config, MultiBert};
-use suplistmlrs::model::{infer_text, ModelOutput};
+use suplistmlrs::combiner::combine;
+use suplistmlrs::model::{infer_text, MetaRow};
 use tokenizers::tokenizer::Tokenizer;
 use wasm_bindgen::prelude::*;
 
@@ -47,7 +49,7 @@ impl Model {
         })
     }
 
-    pub fn run(&mut self, text: String) -> Result<JsValue, JsError> {
+    fn run_one(&mut self, text: String) -> Result<MetaRow, Box<dyn Error>> {
         let cls_text = "[CLS] ".to_string() + &text;
         let inferred = infer_text(
             &self.tokenizer,
@@ -55,16 +57,24 @@ impl Model {
             &self.class_tokenizer,
             &self.model,
             cls_text.to_string(),
-        )
-        .map_err(|x| JsError::new(&x.to_string()))?;
+        )?;
 
-        let output = ModelOutput {
+        let output = MetaRow {
             text: text,
             category: inferred.category,
             name: inferred.name,
         };
+        return Ok(output);
+    }
 
-        Ok(serde_wasm_bindgen::to_value(&output)?)
+    pub fn run(&mut self, text: Vec<String>) -> Result<JsValue, JsError> {
+        let output = text
+            .iter()
+            .map(|x| self.run_one(x.clone()))
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|x| JsError::new(&x.to_string()))?;
+        let combined_output = combine(output).map_err(|x| JsError::new(&x.to_string()))?;
+        Ok(serde_wasm_bindgen::to_value(&combined_output)?)
     }
 }
 
