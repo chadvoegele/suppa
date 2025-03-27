@@ -6,4 +6,3 @@
 
 import './test_dom.js'
 import './test_model.js'
-import './test_combiner.js'

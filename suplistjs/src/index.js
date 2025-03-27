@@ -6,13 +6,11 @@
 
 import { Renderer } from './dom.js'
 import { Model } from './model.js'
-import { Combiner } from './combiner.js'
 import { Proxy } from './proxy.js'
 
 async function main () {
-  const combiner = Combiner()
   const proxy = await Proxy()
-  const suplist = Model(proxy, combiner).suplist
+  const suplist = Model(proxy).suplist
   const renderer = Renderer(document, suplist)
   renderer.render()
   renderer.setExampleInput()

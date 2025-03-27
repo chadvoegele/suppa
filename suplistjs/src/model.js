@@ -4,7 +4,7 @@
  * Licensed under the GPL-2.0 License. See LICENSE file for full license information.
  */
 
-export function Model (proxy, combiner) {
+export function Model (proxy) {
   return {
     suplist
   }

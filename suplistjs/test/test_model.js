@@ -9,7 +9,6 @@
 import assert from 'assert'
 
 import { Model } from '../src/model.js'
-import { Combiner } from '../src/combiner.js'
 
 describe('suplist', function () {
   it('should suplist', async function () {
@@ -23,8 +22,7 @@ describe('suplist', function () {
         ]
       }
     }
-    const combiner = Combiner()
-    const model = Model(mockProxy, combiner)
+    const model = Model(mockProxy)
     const list = await model.suplist(text)
     const expectedList = [{
       name: 'apple',
