@@ -28,6 +28,7 @@ from suplistml.script import (
     is_ipython,
     make_output_path,
     resolve_module_name,
+    script_main,
     setup_logging,
 )
 
@@ -311,7 +312,7 @@ def convert_to_16(output_path: Path):
 
     state_dict16 = {k: v.half() for k, v in state_dict.items()}
     safetensors16_file = output_path / "model.safetensors"
-    safetensors_bytes16 = safetensors.torch.save_file(state_dict16, safetensors16_file)
+    safetensors.torch.save_file(state_dict16, safetensors16_file)
     logger.info(f"Saved 16-bit model to {safetensors16_file}")
 
 
@@ -329,4 +330,4 @@ def main():
 
 
 if __name__ == "__main__" and not is_ipython():
-    main()
+    script_main(globals())
