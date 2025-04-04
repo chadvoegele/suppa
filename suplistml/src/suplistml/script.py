@@ -5,11 +5,13 @@ import argparse
 import importlib
 import inspect
 import logging
+import json
 import os
 import sys
 import tempfile
 import time
 from pathlib import Path
+from argparse import Action
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +54,18 @@ def setup_logging(output_path: Path):
     logging.getLogger("__main__").setLevel(logging.INFO)
 
 
+class JsonAction(Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        value = json.loads(values)
+        setattr(namespace, self.dest, value)
+
+
 def _add_argument(parser, parameter):
-    parser.add_argument(f"--{parameter.name}", default=parameter.default, type=parameter.annotation)
+    primitive_types = (int, str, Path)
+    if parameter.annotation in primitive_types:
+        parser.add_argument(f"--{parameter.name}", default=parameter.default, type=parameter.annotation)
+    else:
+        parser.add_argument(f"--{parameter.name}", action=JsonAction, default=parameter.default)
 
 
 def _build_parser_for_function(function, args=None):
