@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pandas as pd
 
+import suplistml.data
 from suplistml.data.lfs import lfs_open
-from suplistml.script import is_ipython
 
 
 def _tokenize(s):
@@ -164,10 +164,7 @@ def _parseNumbers(s):
 
 
 def get_nyt_path():
-    if is_ipython():
-        path = Path("suplistml") / "data" / "nyt-ingredients-snapshot-2015.csv"
-    else:
-        path = Path(__file__).parent / "nyt-ingredients-snapshot-2015.csv"
+    path = Path(suplistml.data.__file__).parent / "nyt-ingredients-snapshot-2015.csv"
     return path
 
 
