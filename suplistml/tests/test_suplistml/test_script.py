@@ -5,9 +5,9 @@ import argparse
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Dict, List
 from unittest import TestCase
 from unittest.mock import patch
-from typing import List, Dict
 
 from suplistml.script import script_main
 
@@ -26,6 +26,10 @@ def test_boolean(b: bool = False):
 
 def test_complex_obj(o: List[Dict[str, str]]):
     return o
+
+
+def test_required(a: str):
+    return a
 
 
 class TestScriptMain(TestCase):
@@ -57,8 +61,7 @@ class TestScriptMain(TestCase):
         self.assertEqual(cm.exception.message, "invalid int value: 'hello'")
 
     def test_auto_output(self):
-        with tempfile.TemporaryDirectory(prefix="test_suplistml") as tmpdir,\
-            patch("tempfile.gettempdir") as gettempdir:
+        with tempfile.TemporaryDirectory(prefix="test_suplistml") as tmpdir, patch("tempfile.gettempdir") as gettempdir:
             gettempdir.return_value = tmpdir
             path = script_main(self.fake_globals, args=["--name=test_auto_output"])
             self.assertIn("test_auto_output/output", path)
@@ -76,5 +79,10 @@ class TestScriptMain(TestCase):
         self.assertFalse(result)
 
     def test_complex_obj(self):
-        result = script_main(self.fake_globals, args=["--name=test_complex_obj", "--o=[{\"a\": 5}, {\"b\": \"c\"}]"])
+        result = script_main(self.fake_globals, args=["--name=test_complex_obj", '--o=[{"a": 5}, {"b": "c"}]'])
         self.assertEqual(result, [dict(a=5), dict(b="c")])
+
+    def test_required(self):
+        with self.assertRaises(argparse.ArgumentError) as cm:
+            script_main(self.fake_globals, args=["--name=test_required"])
+        self.assertEqual(cm.exception.message, "the following arguments are required: --a")

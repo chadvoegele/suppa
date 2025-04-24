@@ -4,14 +4,14 @@ __license__ = "GNU GPLv2"
 import argparse
 import importlib
 import inspect
-import logging
 import json
+import logging
 import os
 import sys
 import tempfile
 import time
-from pathlib import Path
 from argparse import Action
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -62,10 +62,20 @@ class JsonAction(Action):
 
 def _add_argument(parser, parameter):
     primitive_types = (int, str, Path)
-    if parameter.annotation in primitive_types:
-        parser.add_argument(f"--{parameter.name}", default=parameter.default, type=parameter.annotation)
+
+    add_argument_args = {}
+
+    if parameter.default is parameter.empty:
+        add_argument_args["required"] = True
     else:
-        parser.add_argument(f"--{parameter.name}", action=JsonAction, default=parameter.default)
+        add_argument_args["default"] = parameter.default
+
+    if parameter.annotation in primitive_types:
+        add_argument_args["type"] = parameter.annotation
+    else:
+        add_argument_args["action"] = JsonAction
+
+    parser.add_argument(f"--{parameter.name}", **add_argument_args)
 
 
 def _build_parser_for_function(function, args=None):
