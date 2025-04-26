@@ -50,8 +50,9 @@ def setup_logging(output_path: Path):
     logger.addHandler(stdout_handler)
 
     logger.setLevel(logging.WARNING)
-    logging.getLogger("suplistml").setLevel(logging.INFO)
-    logging.getLogger("__main__").setLevel(logging.INFO)
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+    logging.getLogger("suplistml").setLevel(log_level)
+    logging.getLogger("__main__").setLevel(log_level)
 
 
 class JsonAction(Action):
