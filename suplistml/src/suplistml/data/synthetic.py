@@ -14,6 +14,8 @@ import pandas as pd
 import requests
 from google import genai
 
+import suplistml.data
+from suplistml.data.lfs import lfs_open
 from suplistml.script import is_ipython, script_main, setup_logging
 
 logger = logging.getLogger(__name__)
@@ -311,6 +313,17 @@ def run_extract(
             logger.info(json.dumps({"message": "extracted result", "extracted": extracted}))
             f.write(json.dumps(extracted) + "\n")
     logger.info(f"Dumped extracted data to {extracted_path=}")
+
+
+def get_synthetic_df(nrows: int = None):
+    setup_logging()
+    path = Path(suplistml.data.__file__).parent / "nyt_full_synthetic+model=gemini25flash0417.2025apr26.json"
+    logger.info(f"Using synthetic data from {path=}")
+    with lfs_open(path, "r") as f:
+        df = pd.read_json(f, nrows=nrows, lines=True)
+
+    df = df.rename(columns={"quantity": "qty"})
+    return df
 
 
 if __name__ == "__main__" and not is_ipython():
