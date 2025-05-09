@@ -36,18 +36,20 @@ def make_output_path(dir: Path):
     return output_path
 
 
-def setup_logging(output_path: Path):
-    log_path = output_path / "main.log"
-    file_handler = logging.FileHandler(log_path)
+def setup_logging(output_path: Path = None):
     stdout_handler = logging.StreamHandler()
 
     formatter = logging.Formatter(fmt=logging.BASIC_FORMAT)
-    file_handler.setFormatter(formatter)
     stdout_handler.setFormatter(formatter)
 
     logger = logging.getLogger()
-    logger.addHandler(file_handler)
     logger.addHandler(stdout_handler)
+
+    if output_path is not None:
+        log_path = output_path / "main.log"
+        file_handler = logging.FileHandler(log_path)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
 
     logger.setLevel(logging.WARNING)
     log_level = os.getenv("LOG_LEVEL", "INFO").upper()
