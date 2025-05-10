@@ -5,6 +5,7 @@ import json
 import logging
 import random
 from pathlib import Path
+from typing import Optional
 
 import evaluate
 import numpy as np
@@ -26,8 +27,6 @@ from suplistml.model.tokenizer import (
 )
 from suplistml.script import (
     is_ipython,
-    make_output_path,
-    resolve_module_name,
     script_main,
     setup_logging,
 )
@@ -40,6 +39,7 @@ def seed_everything(seed=8385):
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
+    logger.info(json.dumps({"message": "Seeding random number generators", "seed": seed}))
 
 
 def get_joint_model(tokenizer, tag_tokenizer, class_tokenizer):
@@ -60,13 +60,18 @@ def get_joint_model(tokenizer, tag_tokenizer, class_tokenizer):
     return model
 
 
-def run(
-    output_path: Path,
-    nrows=None,
-    eval_steps=16,
-    gradient_accumulation_steps=32,
-    debug=False,
+def run_training(
+    output_path: Path = "__AUTO__",
+    nrows: int = None,
+    eval_steps: int = 16,
+    gradient_accumulation_steps: int = 32,
+    debug: bool = False,
+    dataset: str = "nyt_full_synthetic+model=gemini25flash0417.2025apr26",
 ):
+    setup_logging(output_path)
+    seed_everything()
+    logger.info(json.dumps({k: str(v) for k, v in locals().items()}))
+
     if debug:
         nrows = 100
         eval_steps = 2
@@ -75,10 +80,29 @@ def run(
     logger.info("Getting tokenizer")
     tokenizer = get_tokenizer()
     tag_tokenizer = get_tag_tokenizer()
-    class_tokenizer = get_class_tokenizer()
+
+    if dataset == "nyt_full_synthetic+model=gemini25flash0417.2025apr26":
+        from suplistml.data.synthetic import get_aisles, get_synthetic_df
+
+        df = get_synthetic_df(nrows=nrows)
+        classes = get_aisles()
+
+    elif dataset == "nyt_llm_categories+model=mistral7b+prompt=icl.2024jan29":
+        from suplistml.dataset.multi_dataset import _get_joined_nyt_aisles_dfs
+        from suplistml.model.tokenizer import _get_classes
+
+        classes = _get_classes()
+        df = _get_joined_nyt_aisles_dfs(nrows=nrows)
+
+    else:
+        raise ValueError(f"Unknown dataset: {dataset}")
+
+    tokenizer = get_tokenizer()
+    tag_tokenizer = get_tag_tokenizer()
+    class_tokenizer = get_class_tokenizer(classes=classes)
 
     logger.info("Getting data")
-    dataset = MultiDataset(tokenizer, tag_tokenizer, class_tokenizer, nrows=nrows, seqlen=256)
+    dataset = MultiDataset(tokenizer, tag_tokenizer, class_tokenizer, nrows=nrows, df=df, seqlen=256)
     model = get_joint_model(tokenizer, tag_tokenizer, class_tokenizer)
 
     model.config.save_pretrained(output_path / "config")
@@ -146,7 +170,7 @@ def run(
     trainer.train()
 
 
-def predict(output_path: Path = None):
+def predict(output_path: Path = "__AUTO__"):
     tokenizer = get_tokenizer()
     tag_tokenizer = get_tag_tokenizer()
     class_tokenizer = get_class_tokenizer()
@@ -187,6 +211,8 @@ def predict(output_path: Path = None):
         {"input": "½ teaspoon fine sea salt"},
         {"input": "1 cup extra-virgin olive oil"},
         {"input": "2 tablespoons mayo"},
+        {"input": "4-6 dates"},
+        {"input": "1 tablespoon honey"},
     ]
     in_ids = tokenizer([row["input"] for row in data], return_tensors="pt", padding=True)
     outputs = model(in_ids["input_ids"], in_ids["attention_mask"])
@@ -259,14 +285,16 @@ def test_candle():
     print(f"{tag_pred=}")
 
 
-def dataset_checker():
+def dataset_checker(nrows: Optional[int] = None):
+    from suplistml.data.synthetic import get_aisles, get_synthetic_df
+
     tokenizer = get_tokenizer()
     tag_tokenizer = get_tag_tokenizer()
-    class_tokenizer = get_class_tokenizer()
+    class_tokenizer = get_class_tokenizer(classes=get_aisles())
 
-    nrows = None
+    df = get_synthetic_df(nrows=None)
     logger.info("Getting data")
-    dataset = MultiDataset(tokenizer, tag_tokenizer, class_tokenizer, nrows=nrows, seqlen=256)
+    dataset = MultiDataset(tokenizer, tag_tokenizer, class_tokenizer, nrows=nrows, seqlen=256, df=df)
     n = len(dataset)
     n_nothing = 0
     n_no_class = 0
@@ -314,19 +342,6 @@ def convert_to_16(output_path: Path):
     safetensors16_file = output_path / "model.safetensors"
     safetensors.torch.save_file(state_dict16, safetensors16_file)
     logger.info(f"Saved 16-bit model to {safetensors16_file}")
-
-
-def main():
-    seed_everything()
-    module_name = resolve_module_name(__name__)
-    output_path = make_output_path(module_name)
-    setup_logging(output_path)
-
-    # predict(output_path)
-    # reshard_model(output_path)
-    # test_candle()
-    run(output_path)
-    # convert_to_16(output_path)
 
 
 if __name__ == "__main__" and not is_ipython():

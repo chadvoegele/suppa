@@ -316,13 +316,14 @@ def run_extract(
 
 
 def get_synthetic_df(nrows: int = None):
-    setup_logging()
     path = Path(suplistml.data.__file__).parent / "nyt_full_synthetic+model=gemini25flash0417.2025apr26.json"
     logger.info(f"Using synthetic data from {path=}")
     with lfs_open(path, "r") as f:
         df = pd.read_json(f, nrows=nrows, lines=True)
 
     df = df.rename(columns={"quantity": "qty"})
+    df = df[df["unit"].str.len() < 100]
+    df = df[~pd.isna(df["aisle"])]
     return df
 
 
