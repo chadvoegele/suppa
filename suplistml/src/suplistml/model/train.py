@@ -285,7 +285,11 @@ def test_candle():
     print(f"{tag_pred=}")
 
 
-def dataset_checker(nrows: Optional[int] = None):
+def dataset_checker(output_path: Path = "__AUTO__", nrows: Optional[int] = None):
+    setup_logging(output_path)
+    seed_everything()
+    logger.info(json.dumps({k: str(v) for k, v in locals().items()}))
+
     from suplistml.data.synthetic import get_aisles, get_synthetic_df
 
     tokenizer = get_tokenizer()
