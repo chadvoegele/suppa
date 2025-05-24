@@ -77,6 +77,7 @@ class MultiBert(PreTrainedModel):
             num_hidden_layers=config.num_hidden_layers,
             num_attention_heads=config.num_attention_heads,
             intermediate_size=config.intermediate_size,
+            attn_implementation="eager",
         )
         self.bert = BertModel(bert_config, add_pooling_layer=False)
 
@@ -125,6 +126,7 @@ class MultiBert(PreTrainedModel):
             loss = torch.tensor(torch.nan)
 
         elif class_labels is None and tag_labels is None:
+            logger.warning("Found None loss!")
             loss = None
 
         else:
