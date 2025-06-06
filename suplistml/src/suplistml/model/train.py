@@ -345,8 +345,10 @@ def reshard_model(output_path: Path):
     model.save_pretrained(save_directory=output_path / "shards", max_shard_size="20MB")
 
 
-def convert_to_16(output_path: Path):
-    model_root = Path("src/suplistml/models/run+1733494653")
+def convert_to_16(output_path: Path = "__AUTO__"):
+    setup_logging(output_path)
+    logger.info(json.dumps({k: str(v) for k, v in locals().items()}))
+    model_root = Path("src/suplistml/models/run+1748084792")
     trained_model_path = model_root / "model.safetensors"
     with lfs_open(trained_model_path, "rb") as g:
         safetensors_bytes = g.read()
