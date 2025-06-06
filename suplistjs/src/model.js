@@ -21,7 +21,19 @@ export function Model (proxy) {
   }
 
   function sortRows (rows) {
-    const ORDER = ['produce', 'vegetables', 'meat', 'seafood', 'deli', 'bakery', 'dairy', 'baking', 'frozen foods', 'beverages', 'cond', 'condiment', 'condiments', 'grains', 'nuts', 'pasta', 'spices']
+    const ORDER = [
+      'fresh fruits',
+      'fresh vegetables',
+      'meat',
+      'seafood',
+      'deli',
+      'dairy and eggs',
+      'frozen',
+      'bakery',
+      'beverages',
+      'pantry',
+      'spices'
+    ]
     const orderMap = Object.fromEntries(ORDER.map((c, i) => [c, i]))
 
     rows.sort((a, b) => {

@@ -5,7 +5,7 @@ import path from 'path'
 import { execSync } from 'child_process'
 
 const args = process.argv.slice(2)
-const tag = args[0] || '1733494653'
+const tag = args[0] || '1748084792'
 const outputDir = args[1] || 'static/model'
 const inputDir = args[2] || '../suplistml/src/suplistml/models/run+' + tag
 
