@@ -17,7 +17,7 @@ struct Mlp {
 
 impl Module for Mlp {
     fn forward(&self, xs: &Tensor) -> Result<Tensor> {
-        xs.apply(&self.fc1)?.relu()?.apply(&self.fc2)
+        xs.apply(&self.fc1)?.gelu()?.apply(&self.fc2)
     }
 }
 

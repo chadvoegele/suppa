@@ -21,6 +21,7 @@ from suplistml.data.lfs import lfs_open
 from suplistml.dataset.multi_dataset import MultiDataset
 from suplistml.model.multi_bert import MultiBert, MultiBertConfig
 from suplistml.model.tokenizer import (
+    export_tokenizer,
     get_class_tokenizer,
     get_tag_tokenizer,
     get_tokenizer,
@@ -64,7 +65,7 @@ def run_training(
     output_path: Path = "__AUTO__",
     nrows: int = None,
     eval_steps: int = 16,
-    gradient_accumulation_steps: int = 32,
+    global_batch_size: int = 256,
     debug: bool = False,
     dataset: str = "nyt_full_synthetic+model=gemini25flash0417.2025apr26",
 ):
@@ -75,11 +76,7 @@ def run_training(
     if debug:
         nrows = 100
         eval_steps = 2
-        gradient_accumulation_steps = 4
-
-    logger.info("Getting tokenizer")
-    tokenizer = get_tokenizer()
-    tag_tokenizer = get_tag_tokenizer()
+        global_batch_size = 1
 
     if dataset == "nyt_full_synthetic+model=gemini25flash0417.2025apr26":
         from suplistml.data.synthetic import get_aisles, get_synthetic_df
@@ -97,6 +94,7 @@ def run_training(
     else:
         raise ValueError(f"Unknown dataset: {dataset}")
 
+    logger.info("Getting tokenizer")
     tokenizer = get_tokenizer()
     tag_tokenizer = get_tag_tokenizer()
     class_tokenizer = get_class_tokenizer(classes=classes)
@@ -106,6 +104,9 @@ def run_training(
     model = get_joint_model(tokenizer, tag_tokenizer, class_tokenizer)
 
     model.config.save_pretrained(output_path / "config")
+    export_tokenizer(output_path=output_path / "tokenizer", tokenizer=tokenizer)
+    export_tokenizer(output_path=output_path / "tag_tokenizer", tokenizer=tag_tokenizer)
+    export_tokenizer(output_path=output_path / "class_tokenizer", tokenizer=class_tokenizer)
 
     metric = evaluate.load("accuracy")
 
@@ -135,6 +136,11 @@ def run_training(
     subset_indices = rng.choice(np.arange(n_train_samples), n_test_samples, replace=False)
     train_subset = torch.utils.data.Subset(train_dataset, subset_indices.tolist())
 
+    per_device_train_batch_size = 20
+    gradient_accumulation_steps = max(1, global_batch_size // per_device_train_batch_size)
+    logger.info(f"Per device train batch size: {per_device_train_batch_size}")
+    logger.info(f"Global batch size: {global_batch_size}")
+    logger.info(f"Gradient accumulation steps: {gradient_accumulation_steps}")
     args = TrainingArguments(
         output_dir=output_path,
         num_train_epochs=20,
@@ -143,7 +149,7 @@ def run_training(
         eval_steps=eval_steps,
         save_steps=128,
         save_total_limit=3,
-        per_device_train_batch_size=30,
+        per_device_train_batch_size=per_device_train_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
     )
 
@@ -171,11 +177,15 @@ def run_training(
 
 
 def predict(output_path: Path = "__AUTO__"):
+    from suplistml.data.synthetic import get_aisles
+
+    logger.info("Getting tokenizer")
     tokenizer = get_tokenizer()
     tag_tokenizer = get_tag_tokenizer()
-    class_tokenizer = get_class_tokenizer()
+    classes = get_aisles()
+    class_tokenizer = get_class_tokenizer(classes=classes)
 
-    model_root = Path("src/suplistml/models/run+1733494653")
+    model_root = Path("src/suplistml/models/run+1748084792")
     trained_model_path = model_root / "model.safetensors"
     with lfs_open(trained_model_path, "rb") as g:
         safetensors_bytes = g.read()

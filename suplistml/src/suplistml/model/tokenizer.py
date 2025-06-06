@@ -73,18 +73,18 @@ def get_tokenizer():
     return tokenizer
 
 
-def export_tokenizers(output_path: Path):
+def export_tokenizers(output_path: Path, tokenizer):
     tag_tokenizer = get_tag_tokenizer()
-    tag_tokenizer_path = output_path / "tag_tokenizer"
-    tag_tokenizer_path.mkdir(exist_ok=True, parents=True)
-    logger.info(f"Saving tag tokenizer to {tag_tokenizer_path}")
-    tag_tokenizer.save_pretrained(tag_tokenizer_path)
+    export_tokenizer(output_path / "tag_tokenizer", tag_tokenizer)
 
     class_tokenizer = get_class_tokenizer()
-    class_tokenizer_path = output_path / "class_tokenizer"
-    class_tokenizer_path.mkdir(exist_ok=True, parents=True)
-    logger.info(f"Saving class tokenizer to {class_tokenizer_path}")
-    class_tokenizer.save_pretrained(class_tokenizer_path)
+    export_tokenizer(output_path / "class_tokenizer", class_tokenizer)
+
+
+def export_tokenizer(output_path: Path, tokenizer):
+    output_path.mkdir(exist_ok=True, parents=True)
+    logger.info(f"Saving tokenizer to {output_path}")
+    tokenizer.save_pretrained(output_path)
 
 
 def main():
