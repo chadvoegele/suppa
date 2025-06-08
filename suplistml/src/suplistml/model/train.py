@@ -346,23 +346,5 @@ def dataset_checker(output_path: Path = "__AUTO__", nrows: Optional[int] = None)
     logger.info(f"{n=} {n_nothing=} {n_no_class=} {n_no_tags=}")
 
 
-def reshard_model(output_path: Path):
-    model_root = Path("suplistml/models/run+1733494653")
-    trained_model_path = model_root / "model.safetensors"
-    with lfs_open(trained_model_path, "rb") as g:
-        safetensors_bytes = g.read()
-        state_dict = safetensors.torch.load(safetensors_bytes)
-
-    config_path = model_root / "config.json"
-    with lfs_open(config_path, "r") as f:
-        config_dict = json.load(f)
-        config = MultiBertConfig.from_dict(config_dict)
-
-    model = MultiBert(config)
-    model.eval()
-    model.load_state_dict(state_dict, strict=True)
-    model.save_pretrained(save_directory=output_path / "shards", max_shard_size="20MB")
-
-
 if __name__ == "__main__" and not is_ipython():
     script_main(globals())
