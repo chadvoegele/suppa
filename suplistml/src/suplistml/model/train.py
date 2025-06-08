@@ -73,10 +73,17 @@ def run_training(
     seed_everything()
     logger.info(json.dumps({k: str(v) for k, v in locals().items()}))
 
+    save_steps = 128
+    per_device_train_batch_size = 20
+    num_train_epochs = 20
+
     if debug:
-        nrows = 100
+        nrows = 16
         eval_steps = 2
-        global_batch_size = 1
+        global_batch_size = 4
+        per_device_train_batch_size = 2
+        save_steps = 8
+        num_train_epochs = 2
 
     if dataset == "nyt_full_synthetic+model=gemini25flash0417.2025apr26":
         from suplistml.data.synthetic import get_aisles, get_synthetic_df
@@ -136,21 +143,21 @@ def run_training(
     subset_indices = rng.choice(np.arange(n_train_samples), n_test_samples, replace=False)
     train_subset = torch.utils.data.Subset(train_dataset, subset_indices.tolist())
 
-    per_device_train_batch_size = 20
     gradient_accumulation_steps = max(1, global_batch_size // per_device_train_batch_size)
     logger.info(f"Per device train batch size: {per_device_train_batch_size}")
     logger.info(f"Global batch size: {global_batch_size}")
     logger.info(f"Gradient accumulation steps: {gradient_accumulation_steps}")
     args = TrainingArguments(
         output_dir=output_path,
-        num_train_epochs=20,
+        num_train_epochs=num_train_epochs,
         logging_steps=2,
         eval_strategy="steps",
         eval_steps=eval_steps,
-        save_steps=128,
+        save_steps=save_steps,
         save_total_limit=3,
         per_device_train_batch_size=per_device_train_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
+        save_safetensors=True,
     )
 
     trainer = Trainer(
@@ -172,7 +179,19 @@ def run_training(
         ):
             logger.info(json.dumps(logs))
 
+    class SaveCallback(TrainerCallback):
+        def on_save(self, args: TrainingArguments, state: TrainerState, control: TrainerControl, **kwargs):
+            model = kwargs["model"]
+            state_dict = model.state_dict()
+            state_dict_fp16 = {k: v.half() for k, v in state_dict.items()}
+            checkpoint_folder = f"checkpoint-{state.global_step}"
+            output_path = Path(args.output_dir) / checkpoint_folder / "model_fp16.safetensors"
+
+            safetensors.torch.save_file(state_dict_fp16, output_path)
+            logger.info(f"Saved model in fp16 to {str(output_path)}")
+
     trainer.add_callback(LoggerCallback())
+    trainer.add_callback(SaveCallback())
     trainer.train()
 
 
@@ -343,21 +362,6 @@ def reshard_model(output_path: Path):
     model.eval()
     model.load_state_dict(state_dict, strict=True)
     model.save_pretrained(save_directory=output_path / "shards", max_shard_size="20MB")
-
-
-def convert_to_16(output_path: Path = "__AUTO__"):
-    setup_logging(output_path)
-    logger.info(json.dumps({k: str(v) for k, v in locals().items()}))
-    model_root = Path("src/suplistml/models/run+1748084792")
-    trained_model_path = model_root / "model.safetensors"
-    with lfs_open(trained_model_path, "rb") as g:
-        safetensors_bytes = g.read()
-        state_dict = safetensors.torch.load(safetensors_bytes)
-
-    state_dict16 = {k: v.half() for k, v in state_dict.items()}
-    safetensors16_file = output_path / "model.safetensors"
-    safetensors.torch.save_file(state_dict16, safetensors16_file)
-    logger.info(f"Saved 16-bit model to {safetensors16_file}")
 
 
 if __name__ == "__main__" and not is_ipython():
