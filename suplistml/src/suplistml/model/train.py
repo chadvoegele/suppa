@@ -43,6 +43,21 @@ def seed_everything(seed=8385):
     logger.info(json.dumps({"message": "Seeding random number generators", "seed": seed}))
 
 
+def get_model():
+    config = BertConfig.from_pretrained(
+        Path(TRANSFORMERS_CACHE)
+        / "models--intfloat--e5-small-v2/snapshots/dca8b1a9dae0d4575df2bf423a5edb485a431236/config.json",
+    )
+    model = BertForSequenceClassification(config)
+    state_dict = safetensors.torch.load_file(
+        Path(TRANSFORMERS_CACHE)
+        / "models--intfloat--e5-small-v2/snapshots/dca8b1a9dae0d4575df2bf423a5edb485a431236/model.safetensors"
+    )
+    state_dict = {k: v for k, v in state_dict.items() if k != "embeddings.position_ids"}
+    model.bert.load_state_dict(state_dict, strict=True)
+    return model
+
+
 def get_joint_model(tokenizer, tag_tokenizer, class_tokenizer):
     pretrained_model = get_model()
 
@@ -195,8 +210,12 @@ def run_training(
     trainer.train()
 
 
-def predict(output_path: Path = "__AUTO__"):
+def run_predictions(output_path: Path = "__AUTO__"):
     from suplistml.data.synthetic import get_aisles
+
+    setup_logging(output_path)
+    seed_everything()
+    logger.info(json.dumps({k: str(v) for k, v in locals().items()}))
 
     logger.info("Getting tokenizer")
     tokenizer = get_tokenizer()
@@ -266,21 +285,6 @@ def predict(output_path: Path = "__AUTO__"):
         print()
 
 
-def get_model():
-    config = BertConfig.from_pretrained(
-        Path(TRANSFORMERS_CACHE)
-        / "models--intfloat--e5-small-v2/snapshots/dca8b1a9dae0d4575df2bf423a5edb485a431236/config.json",
-    )
-    model = BertForSequenceClassification(config)
-    state_dict = safetensors.torch.load_file(
-        Path(TRANSFORMERS_CACHE)
-        / "models--intfloat--e5-small-v2/snapshots/dca8b1a9dae0d4575df2bf423a5edb485a431236/model.safetensors"
-    )
-    state_dict = {k: v for k, v in state_dict.items() if k != "embeddings.position_ids"}
-    model.bert.load_state_dict(state_dict, strict=True)
-    return model
-
-
 def test_candle():
     tokenizer = get_tokenizer()
     tag_tokenizer = get_tag_tokenizer()
@@ -314,7 +318,7 @@ def test_candle():
     print(f"{tag_pred=}")
 
 
-def dataset_checker(output_path: Path = "__AUTO__", nrows: Optional[int] = None):
+def run_dataset_checker(output_path: Path = "__AUTO__", nrows: Optional[int] = None):
     setup_logging(output_path)
     seed_everything()
     logger.info(json.dumps({k: str(v) for k, v in locals().items()}))
