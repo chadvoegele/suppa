@@ -100,7 +100,7 @@ class MultiBert(PreTrainedModel):
 
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
-            nn.init.kaiming_uniform_(m.weight, nonlinearity="relu")
+            nn.init.kaiming_uniform_(m.weight, nonlinearity="leaky_relu")
             nn.init.zeros_(m.bias)
 
     def forward(self, input_ids, attention_mask=None, class_labels=None, tag_labels=None):
@@ -126,7 +126,6 @@ class MultiBert(PreTrainedModel):
             loss = torch.tensor(torch.nan)
 
         elif class_labels is None and tag_labels is None:
-            logger.warning("Found None loss!")
             loss = None
 
         else:

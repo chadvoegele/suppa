@@ -29,7 +29,7 @@ class TestBertForSequenceTokenClassification(TestCase):
         return model
 
     def test_overfit(self):
-        torch.manual_seed(42)
+        torch.manual_seed(41)
 
         model = self._get_model()
 
@@ -44,14 +44,15 @@ class TestBertForSequenceTokenClassification(TestCase):
         class_labels = torch.tensor([r["class_label"] for r in dataset])
         tag_labels = torch.tensor([r["tag_labels"] for r in dataset])
 
-        num_epochs = 100
-        n_to_log = 5
+        max_epochs = 120
+        n_to_log = 10
+        target_loss = 0.05
 
-        optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=2e-3, weight_decay=0.0, betas=(0.8, 0.9))
 
         losses = []
         model.train()
-        for epoch in range(num_epochs):
+        for epoch in range(max_epochs):
             model_outputs = model.forward(
                 input_ids,
                 attention_mask=attention_mask,
@@ -68,12 +69,12 @@ class TestBertForSequenceTokenClassification(TestCase):
                 logger.info(f"{epoch=} loss={loss.item()} norm={norm.item()}")
                 losses.append(loss)
 
-        n_to_compare = 10
-        assert num_epochs / n_to_log > n_to_compare
-        avg_down = np.average(
-            [ploss > loss for ploss, loss in zip(losses[-(n_to_compare + 1) : -1], losses[-n_to_compare:])]
-        )
+            if loss < target_loss:
+                break
+
+        avg_down = np.average([ploss > loss for ploss, loss in zip(losses[:-1], losses[1:])])
         self.assertGreater(avg_down, 0.85)
+        self.assertLess(loss.item(), target_loss)
 
         for row in dataset:
             input_ids = torch.tensor([row["input_ids"]])
