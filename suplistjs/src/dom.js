@@ -39,6 +39,9 @@ export function Renderer (document, suplist) {
     const list = await suplist(text)
     const formattedList = renderList(list)
     output.appendChild(formattedList)
+
+    const copyButton = renderCopyButton()
+    output.appendChild(copyButton)
   }
 
   function debounce (delay, func) {
@@ -85,6 +88,15 @@ export function Renderer (document, suplist) {
     return rowEl
   }
 
+  function renderCopyButton () {
+    const copyButton = document.createElement('button')
+    copyButton.innerHTML = '📋'
+    copyButton.title = 'Copy list to clipboard'
+    copyButton.className = 'copy-button'
+    copyButton.addEventListener('click', () => copyListToClipboard())
+    return copyButton
+  }
+
   function getExampleInput () {
     const example = `# Chicken Noodle Soup
 1 medium onion, chopped
@@ -110,5 +122,30 @@ export function Renderer (document, suplist) {
 
     const output = document.getElementById('output')
     setOutput(output, getExampleInput())
+  }
+
+  function copyListToClipboard () {
+    const output = document.getElementById('output')
+    const ul = output.querySelector('ul')
+    if (!ul) return
+
+    const listItems = ul.querySelectorAll('li')
+    const textContent = Array.from(listItems)
+      .map(li => li.textContent.trim())
+      .join('\n')
+
+    navigator.clipboard.writeText(textContent).then(() => {
+      const copyButton = output.querySelector('.copy-button')
+      const originalText = copyButton.innerHTML
+      const originalColor = copyButton.style.color
+      copyButton.innerHTML = '✓'
+      copyButton.style.color = 'green'
+      setTimeout(() => {
+        copyButton.innerHTML = originalText
+        copyButton.style.color = originalColor
+      }, 1000)
+    }).catch(err => {
+      console.error('Failed to copy text: ', err)
+    })
   }
 }
