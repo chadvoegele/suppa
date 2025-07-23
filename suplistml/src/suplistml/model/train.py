@@ -7,7 +7,6 @@ import random
 from pathlib import Path
 from typing import Optional
 
-import evaluate
 import numpy as np
 import safetensors.torch
 import torch
@@ -76,6 +75,15 @@ def get_joint_model(tokenizer, tag_tokenizer, class_tokenizer):
     return model
 
 
+def calculate_accuracy(logits, labels):
+    predictions = logits.argmax(axis=-1).flatten()
+    labels = labels.flatten()
+    predictions = predictions[labels != -100]
+    labels = labels[labels != -100]
+    accuracy = (predictions == labels).mean().item()
+    return accuracy
+
+
 def run_training(
     output_path: Path = "__AUTO__",
     nrows: int = None,
@@ -130,19 +138,12 @@ def run_training(
     export_tokenizer(output_path=output_path / "tag_tokenizer", tokenizer=tag_tokenizer)
     export_tokenizer(output_path=output_path / "class_tokenizer", tokenizer=class_tokenizer)
 
-    metric = evaluate.load("accuracy")
-
     def compute_metrics(eval_pred):
         (class_logits, tag_logits), (class_labels, tag_labels) = eval_pred
-        class_predictions = class_logits.argmax(axis=-1).flatten()
-        tag_predictions = tag_logits.argmax(axis=-1).flatten()
-        class_labels = class_labels.flatten()
-        tag_labels = tag_labels.flatten()
-        tag_predictions = tag_predictions[tag_labels != -100]
-        tag_labels = tag_labels[tag_labels != -100]
 
-        class_accuracy = metric.compute(predictions=class_predictions.tolist(), references=class_labels.tolist())
-        tag_accuracy = metric.compute(predictions=tag_predictions.tolist(), references=tag_labels.tolist())
+        class_accuracy = calculate_accuracy(class_logits, class_labels)
+        tag_accuracy = calculate_accuracy(tag_logits, tag_labels)
+
         metrics = {"class": class_accuracy, "tag": tag_accuracy}
         return metrics
 
