@@ -80,7 +80,7 @@ def calculate_accuracy(logits, labels):
     labels = labels.flatten()
     predictions = predictions[labels != -100]
     labels = labels[labels != -100]
-    accuracy = (predictions == labels).mean().item()
+    accuracy = (predictions == labels).float().mean().item()
     return accuracy
 
 

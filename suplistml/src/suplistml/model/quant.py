@@ -19,6 +19,7 @@ from suplistml.model.tokenizer import (
     get_tokenizer,
 )
 from suplistml.model.train import (
+    calculate_accuracy,
     get_joint_model,
     seed_everything,
 )
@@ -38,14 +39,29 @@ class QuantLinear(nn.Linear):
         self.qmax = 2 ** (self.bits - 1) - 1
         self.qmin = -self.qmax
 
-    def qdq(self, weights):
-        max_val = weights.abs().max(dim=0, keepdim=True)[0]
+    def _quantize(self, weight):
+        max_val = weight.abs().max(dim=0, keepdim=True)[0]
         scale = max_val / self.qmax
-        return (weights / scale).round().clamp_(self.qmin, self.qmax) * scale
+        qweight = (weight / scale).round().clamp_(self.qmin, self.qmax)
+        return qweight, scale
+
+    def _quantize_dequantize(self, weight):
+        qweight, scale = self._quantize(weight)
+        return qweight * scale
 
     def forward(self, x):
-        w_q = self.weight + (self.qdq(self.weight) - self.weight).detach()
+        w_q = self.weight + (self._quantize_dequantize(self.weight) - self.weight).detach()
         return nn.functional.linear(x, w_q, self.bias)
+
+    def state_dict(self, destination=None, prefix="", keep_vars=False):
+        state_dict = super().state_dict(destination=destination, prefix=prefix, keep_vars=keep_vars)
+
+        qweight, scale = self._quantize(self.weight)
+
+        state_dict[prefix + "weight"] = qweight.to(torch.int8)
+        state_dict[prefix + "scale"] = scale
+
+        return state_dict
 
 
 def replace_linear_with_quant(module, bits=8):
@@ -78,9 +94,36 @@ def _get_loss(model, dataset):
     return avg_loss
 
 
+def _get_accuracies(model, dataset):
+    device = next(model.parameters()).device
+    class_accuracies = []
+    tag_accuracies = []
+    for i in range(len(dataset)):
+        sample = dataset[i]
+        outputs = model(
+            input_ids=sample["input_ids"].unsqueeze(0).to(device),
+            attention_mask=sample["attention_mask"].unsqueeze(0).to(device),
+        )
+        class_labels = sample["class_labels"]
+        class_accuracy = calculate_accuracy(outputs.class_logits.cpu(), class_labels.cpu())
+        class_accuracies.append(class_accuracy)
+
+        tag_labels = sample["tag_labels"]
+        tag_accuracy = calculate_accuracy(outputs.tag_logits.cpu(), tag_labels.cpu())
+        tag_accuracies.append(tag_accuracy)
+
+    class_accuracies = torch.tensor(class_accuracies)
+    avg_class_accuracy = class_accuracies.mean().item()
+
+    tag_accuracies = torch.tensor(tag_accuracies)
+    avg_tag_accuracy = tag_accuracies.mean().item()
+
+    return avg_class_accuracy, avg_tag_accuracy
+
+
 def run_quantize(
     output_path: Path = "__AUTO__",
-    nrows: int = 1024,
+    nrows: int = 102400,
     bits: int = 8,
     n_test_samples: int = 1024,
 ):
@@ -109,17 +152,38 @@ def run_quantize(
         state_dict = safetensors.torch.load(safetensors_bytes)
     model.load_state_dict(state_dict, strict=True)
 
-    split_rng = torch.Generator().manual_seed(8385)
+    state_dict = model.state_dict()
+    state_dict_fp16 = {k: v.half() for k, v in state_dict.items()}
+    fp16_output_path = Path(output_path) / "model_fp16.safetensors"
+    safetensors.torch.save_file(state_dict_fp16, fp16_output_path)
+    logger.info(f"Saved model in fp16 to {str(output_path)}")
+
+    split_rng = torch.Generator().manual_seed(8386)
     random_indices = torch.randperm(len(dataset), generator=split_rng)[:n_test_samples].tolist()
     test_dataset = Subset(dataset, random_indices)
 
     loss = _get_loss(model, test_dataset)
-    logger.info(f"Average loss on test set: {loss}")
+    logger.info(f"{loss=}")
 
-    logger.info(f"Replacing linear layers with quantized versions (bits={bits})")
+    class_accuracy, tag_accuracy = _get_accuracies(model, test_dataset)
+    logger.info(f"{class_accuracy=}")
+    logger.info(f"{tag_accuracy=}")
+
+    logger.info(f"Replacing linear layers with quantized versions ({bits=})")
+    model = model.half()
     model = replace_linear_with_quant(model, bits=bits)
+
+    state_dict_quant = model.state_dict()
+    quant_output_path = Path(output_path) / f"model_w{bits}.safetensors"
+    safetensors.torch.save_file(state_dict_quant, quant_output_path)
+    logger.info(f"Saved model in quant({bits=}) to {str(output_path)}")
+
     loss = _get_loss(model, test_dataset)
-    logger.info(f"Average loss with quantized model on test set: {loss}")
+    logger.info(f"Quantized model loss {loss=}")
+
+    class_accuracy, tag_accuracy = _get_accuracies(model, test_dataset)
+    logger.info(f"Quantized model {class_accuracy=}")
+    logger.info(f"Quantized model {tag_accuracy=}")
 
 
 if __name__ == "__main__" and not is_ipython():
