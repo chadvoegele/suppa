@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use tokenizers::tokenizer::Tokenizer;
 
 use suplistmlrs::bert::{Config, MultiBert};
-use suplistmlrs::model::infer_text;
+use suplistmlrs::model::{dequantize_weights, infer_text};
 
 fn resolve_lfs_path(path: &str) -> String {
     let text = std::fs::read_to_string(path).expect("Failed to read file");
@@ -23,38 +23,41 @@ fn resolve_lfs_path(path: &str) -> String {
 }
 
 fn main() {
-    let tokenizer_file = "../suplistml/suplistml/models/run+1733494653/tokenizer.json";
+    let tokenizer_file = "../suplistml/src/suplistml/models/run+1748084792/tokenizer.json";
     let tokenizer_lfs_file = resolve_lfs_path(tokenizer_file);
     let tokenizer = Tokenizer::from_file(tokenizer_lfs_file).expect("failed to load tokenizer");
 
-    let confile_file = "../suplistml/suplistml/models/run+1733494653/config.json";
+    let confile_file = "../suplistml/src/suplistml/models/run+1748084792/config.json";
     let config_lfs_file = resolve_lfs_path(confile_file);
     let file = std::fs::File::open(config_lfs_file).unwrap();
     let config: Config = serde_json::from_reader(file).unwrap();
 
-    let safetensors_file = "../suplistml/suplistml/models/run+1733494653/model.safetensors";
+    let safetensors_file = "../suplistml/src/suplistml/models/run+1748084792/model_w8.safetensors";
     let safetensors_lfs_file = resolve_lfs_path(safetensors_file);
     let filenames = safetensors_lfs_file
         .split(',')
         .map(std::path::PathBuf::from)
         .collect::<Vec<_>>();
     let device = &Device::Cpu;
-    let vb =
-        unsafe { VarBuilder::from_mmaped_safetensors(&filenames, DType::F32, &device).unwrap() };
+
+    let quantized_tensors = candle_core::safetensors::load(&filenames[0], device).unwrap();
+    let dequantized_tensors = dequantize_weights(&quantized_tensors, device).unwrap();
+    let vb = VarBuilder::from_tensors(dequantized_tensors, DType::F32, device);
     let model = MultiBert::load(vb, &config).unwrap();
 
-    let class_tokenizer_file = "../suplistml/suplistml/models/run+1733494653/class_tokenizer.json";
+    let class_tokenizer_file =
+        "../suplistml/src/suplistml/models/run+1748084792/class_tokenizer.json";
     let class_tokenizer_lfs_file = resolve_lfs_path(class_tokenizer_file);
     let class_tokenizer =
         Tokenizer::from_file(class_tokenizer_lfs_file).expect("failed to load tokenizer");
 
-    let tag_tokenizer_file = "../suplistml/suplistml/models/run+1733494653/tag_tokenizer.json";
+    let tag_tokenizer_file = "../suplistml/src/suplistml/models/run+1748084792/tag_tokenizer.json";
     let tag_tokenizer_lfs_file = resolve_lfs_path(tag_tokenizer_file);
     let tag_tokenizer =
         Tokenizer::from_file(tag_tokenizer_lfs_file).expect("failed to load tokenizer");
 
-    // let text = "[CLS] 2 green and small apples, diced";
-    let text = "[CLS] salt and coarsely-ground pepper";
+    let text = "[CLS] 2 green and small apples, diced";
+    // let text = "[CLS] salt and coarsely-ground pepper";
     let inferred = infer_text(
         &tokenizer,
         &tag_tokenizer,

@@ -7,7 +7,7 @@ use candle_nn::VarBuilder;
 use std::error::Error;
 use suplistmlrs::bert::{Config, MultiBert};
 use suplistmlrs::combiner::combine;
-use suplistmlrs::model::{infer_text, MetaRow};
+use suplistmlrs::model::{dequantize_weights, infer_text, MetaRow};
 use tokenizers::tokenizer::Tokenizer;
 use wasm_bindgen::prelude::*;
 
@@ -37,7 +37,12 @@ impl Model {
         let class_tokenizer =
             Tokenizer::from_bytes(class_tokenizer).map_err(|x| JsError::new(&x.to_string()))?;
         let device = &Device::Cpu;
-        let vb = VarBuilder::from_buffered_safetensors(weights, DType::F32, device)?;
+
+        let quantized_tensors = candle_core::safetensors::load_buffer(&weights, device)
+            .map_err(|x| JsError::new(&x.to_string()))?;
+        let tensors = dequantize_weights(&quantized_tensors, device)
+            .map_err(|x| JsError::new(&x.to_string()))?;
+        let vb = VarBuilder::from_tensors(tensors, DType::F32, device);
         let config: Config = serde_json::from_slice(&config)?;
         let model = MultiBert::load(vb, &config)?;
 

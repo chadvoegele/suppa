@@ -11,7 +11,7 @@ candle-nn = { version = "0.8.0"}
 candle-transformers = { version = "0.8.0"}
 serde = "1.0.215"
 serde_json = "1.0.132"
-getrandom = { version = "0.2", features = ["js"] }
+getrandom = { version = "0.3", features = ["wasm_js"] }
 wasm-bindgen = "0.2.95"
 console_error_panic_hook = "0.1.7"
 serde-wasm-bindgen = "0.6.5"

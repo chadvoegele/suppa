@@ -6,7 +6,8 @@ use crate::bert;
 
 use bert::MultiBert;
 use candle_core::IndexOp;
-use candle_core::{Device, Tensor};
+use candle_core::{DType, Device, Tensor};
+use std::collections::HashMap;
 use std::error::Error;
 use std::result::Result;
 use tokenizers::tokenizer::Tokenizer;
@@ -16,6 +17,55 @@ pub struct MetaRow {
     pub text: String,
     pub category: String,
     pub name: String,
+}
+
+pub fn dequantize_weights(
+    tensors: &HashMap<String, Tensor>,
+    device: &Device,
+) -> candle_core::Result<HashMap<String, Tensor>> {
+    let mut dequantized = HashMap::new();
+
+    let quantized_names = tensors
+        .keys()
+        .filter(|name| {
+            name.ends_with(".weight")
+                && tensors
+                    .keys()
+                    .any(|n| n == &name.replace(".weight", ".scale"))
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+
+    for quantized_name in quantized_names.clone() {
+        let scale_name = quantized_name.replace(".weight", ".scale");
+        if let (Some(weight_tensor), Some(scale_tensor)) =
+            (tensors.get(&quantized_name), tensors.get(&scale_name))
+        {
+            let weight_i8 = weight_tensor.to_device(device)?;
+            let scale_f32 = scale_tensor.to_device(device)?.to_dtype(DType::F32)?;
+
+            let weight_f32 = weight_i8.to_dtype(DType::F32)?;
+            let dequantized_weight = weight_f32.broadcast_mul(&scale_f32)?;
+
+            dequantized.insert(quantized_name, dequantized_weight);
+        } else {
+            return Err(candle_core::Error::Msg(format!(
+                "Found scale tensor '{}' without corresponding weight tensor",
+                scale_name
+            )));
+        }
+    }
+
+    for (name, tensor) in tensors {
+        if !quantized_names.contains(name) && !name.ends_with(".scale") {
+            dequantized.insert(
+                name.clone(),
+                tensor.to_device(device)?.to_dtype(DType::F32)?,
+            );
+        }
+    }
+
+    Ok(dequantized)
 }
 
 pub fn infer_text(
