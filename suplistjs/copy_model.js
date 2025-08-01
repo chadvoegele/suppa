@@ -55,7 +55,7 @@ const modelLfsSrcPath = resolveLfsFile(modelSrcPath)
 const modelDestPrefix = path.join(outputDir, `model.${tag}.safetensors.part_`)
 
 try {
-  execSync(`split -d -b 20M "${modelLfsSrcPath}" "${modelDestPrefix}" --numeric-suffixes=00`)
+  execSync(`split -d -n 6 "${modelLfsSrcPath}" "${modelDestPrefix}" --numeric-suffixes=00`)
   console.log(`Split ${modelSrcPath} via ${modelLfsSrcPath} into parts in ${outputDir}`)
 } catch (error) {
   console.error('Error splitting the model file:', error.message)
