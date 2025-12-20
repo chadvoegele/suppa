@@ -263,23 +263,34 @@ def run_predictions(output_path: Path = "__AUTO__"):
         {"input": "4-6 dates"},
         {"input": "1 tablespoon honey"},
     ]
-    in_ids = tokenizer([row["input"] for row in data], return_tensors="pt", padding=True)
+    cls_inputs = [f"[CLS]{row['input']}" for row in data]
+    in_ids = tokenizer(cls_inputs, return_tensors="pt", padding=True, add_special_tokens=False)
     outputs = model(in_ids["input_ids"], in_ids["attention_mask"])
     class_preds = outputs.class_logits.argmax(dim=-1)
+    class_probs = outputs.class_logits.softmax(dim=-1)
     tag_preds = outputs.tag_logits.argmax(dim=-1)
+    tag_probs = outputs.tag_logits.softmax(dim=-1)
 
     for i, row in enumerate(data):
         input = row["input"]
+        class_prob = class_probs[i, class_preds[i]].item()
         class_pred = class_tokenizer.decode(class_preds[i : (i + 1)].tolist())
         tag_pred = [tag_tokenizer.decode(t) for t in tag_preds[i, in_ids["attention_mask"][i, 1:] == 1].tolist()]
+        row_tag_probs = [
+            tag_probs[i, j, tag_preds[i, j]].item()
+            for j in range(tag_probs[i].size(0))
+            if in_ids["attention_mask"][i, 1:][j] == 1
+        ]
         tokens = [
             tokenizer.decode(t) for t in in_ids["input_ids"][i : (i + 1), in_ids["attention_mask"][i, :] == 1][0, 1:]
         ]
-        tokens_tag = " ".join("|".join((token, tag)) for token, tag in zip(tokens, tag_pred))
+        tokens_tag = " ".join(
+            f"P({tag}|{token})={tag_prob:.2f}" for token, tag, tag_prob in zip(tokens, tag_pred, row_tag_probs)
+        )
         print(
             f"""
 {input=}
-{class_pred=}
+P({class_pred=})={class_prob:.2f}
 {tokens_tag=}
 """.strip()
         )
