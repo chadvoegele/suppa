@@ -32,7 +32,8 @@ export function Model (proxy) {
       'bakery',
       'beverages',
       'pantry',
-      'spices'
+      'spices',
+      'unknown'
     ]
     const orderMap = Object.fromEntries(ORDER.map((c, i) => [c, i]))
 

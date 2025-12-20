@@ -86,10 +86,19 @@ pub fn infer_text(
     let attention_mask = input_ids.ones_like()?;
     let output = model.forward(&input_ids, Some(&attention_mask), &token_type_ids)?;
 
-    let class_preds = output.class_logits.argmax(1)?;
-    let class = class_tokenizer
-        .decode(&class_preds.to_vec1::<u32>()?, false)
+    let class_pred = output.class_logits.argmax(1)?;
+    let class_probs = candle_nn::ops::softmax_last_dim(&output.class_logits)?;
+    let class_prob = class_probs.index_select(&class_pred, 1)?.i((0, 0))?;
+    let unknown_class = "unknown".to_string();
+    let unknown_threshold = 0.85;
+    let predicted_class = class_tokenizer
+        .decode(&class_pred.to_vec1::<u32>()?, false)
         .map_err(|e| e.to_string())?;
+    let class = if class_prob.to_scalar::<f32>()? < unknown_threshold {
+        unknown_class
+    } else {
+        predicted_class
+    };
 
     let name_token = "NAME";
     let name_id = tag_tokenizer
