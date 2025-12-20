@@ -211,7 +211,7 @@ def run_training(
     trainer.train()
 
 
-def run_predictions(output_path: Path = "__AUTO__"):
+def run_predictions(output_path: Path = "__AUTO__", output_mode="flat"):
     from suplistml.data.synthetic import get_aisles
 
     setup_logging(output_path)
@@ -262,6 +262,12 @@ def run_predictions(output_path: Path = "__AUTO__"):
         {"input": "2 tablespoons mayo"},
         {"input": "4-6 dates"},
         {"input": "1 tablespoon honey"},
+        {"input": "larabar"},
+        {"input": "kashi go"},
+        {"input": "kashi go peanut butter"},
+        {"input": "brats"},
+        {"input": "6 andouille"},
+        {"input": "Noka pouches"},
     ]
     cls_inputs = [f"[CLS]{row['input']}" for row in data]
     in_ids = tokenizer(cls_inputs, return_tensors="pt", padding=True, add_special_tokens=False)
@@ -287,14 +293,35 @@ def run_predictions(output_path: Path = "__AUTO__"):
         tokens_tag = " ".join(
             f"P({tag}|{token})={tag_prob:.2f}" for token, tag, tag_prob in zip(tokens, tag_pred, row_tag_probs)
         )
-        print(
-            f"""
+
+        if output_mode == "flat":
+            print(
+                f"""
 {input=}
 P({class_pred=})={class_prob:.2f}
 {tokens_tag=}
 """.strip()
-        )
-        print()
+            )
+            print()
+        elif output_mode == "json":
+            d = dict(
+                input=input,
+                class_=dict(
+                    pred=class_pred,
+                    prob=class_prob,
+                ),
+                token_tag=[
+                    dict(
+                        token=token,
+                        tag=tag,
+                        tag_prob=tag_prob,
+                    )
+                    for token, tag, tag_prob in zip(tokens, tag_pred, row_tag_probs)
+                ],
+            )
+            print(json.dumps(d))
+        else:
+            raise ValueError(f"Unsupported {output_mode=}")
 
 
 def test_candle():
