@@ -7,7 +7,6 @@ from pathlib import Path
 from tokenizers import Tokenizer
 from tokenizers.models import WordLevel
 from transformers import BertTokenizer, PreTrainedTokenizerFast
-from transformers.utils import TRANSFORMERS_CACHE
 
 from suplistml.script import (
     is_ipython,
@@ -68,7 +67,7 @@ def get_tag_tokenizer(tags=None):
 
 def get_tokenizer():
     tokenizer = BertTokenizer.from_pretrained(
-        Path(TRANSFORMERS_CACHE) / "models--intfloat--e5-small-v2/snapshots/dca8b1a9dae0d4575df2bf423a5edb485a431236"
+        "intfloat/e5-small-v2", revision="dca8b1a9dae0d4575df2bf423a5edb485a431236"
     )
     return tokenizer
 

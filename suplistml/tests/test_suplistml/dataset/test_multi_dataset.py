@@ -81,7 +81,7 @@ class TestMultiDataset(TestCase):
             ]
             self.assertEqual(item["input_ids"].tolist(), expected_ids)
 
-            if row["aisle"] is None:
+            if pd.isna(row["aisle"]):
                 self.assertEqual(item["class_labels"], torch.tensor([-100]))
             else:
                 self.assertEqual(class_tokenizer.decode(item["class_labels"].item()), row["aisle"])
