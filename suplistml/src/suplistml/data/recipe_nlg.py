@@ -1,4 +1,6 @@
 """
+From: https://recipenlg.cs.put.poznan.pl/
+
 RecipeNLG Dataset License
 
 I (the "Researcher") have requested permission to use the RecipeNLG dataset (the "Dataset") at Poznań University of Technology (PUT). In exchange for such permission, Researcher hereby agrees to the following terms and conditions:
