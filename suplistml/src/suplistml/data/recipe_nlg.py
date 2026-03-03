@@ -19,7 +19,7 @@ from suplistml.data.lfs import lfs_open
 from suplistml.script import is_ipython
 
 
-def get_llm_aisles_path():
+def get_recipe_nlg_path():
     if is_ipython():
         path = Path("src/suplistml") / "data/recipe_nlg/full_dataset.csv"
     else:
@@ -40,7 +40,7 @@ class Recipe:
 def get_recipe_nlg_data(path=None) -> Recipe:
     """Generator function that reads recipe_nlg CSV line by line into Recipe dataclass."""
     if path is None:
-        path = get_llm_aisles_path()
+        path = get_recipe_nlg_path()
 
     with lfs_open(path, "r") as f:
         reader = csv.DictReader(f)
