@@ -10,11 +10,11 @@ from typing import Optional
 import numpy as np
 import safetensors.torch
 import torch
+from huggingface_hub import hf_hub_download
 from transformers.models.bert.configuration_bert import BertConfig
 from transformers.models.bert.modeling_bert import BertForSequenceClassification
 from transformers.trainer import Trainer, TrainingArguments
 from transformers.trainer_callback import TrainerCallback, TrainerControl, TrainerState
-from transformers.utils import TRANSFORMERS_CACHE
 
 from suplistml.data.lfs import lfs_open
 from suplistml.dataset.multi_dataset import MultiDataset
@@ -43,15 +43,14 @@ def seed_everything(seed=8385):
 
 
 def get_model():
-    config = BertConfig.from_pretrained(
-        Path(TRANSFORMERS_CACHE)
-        / "models--intfloat--e5-small-v2/snapshots/dca8b1a9dae0d4575df2bf423a5edb485a431236/config.json",
-    )
+    config = BertConfig.from_pretrained("intfloat/e5-small-v2", revision="dca8b1a9dae0d4575df2bf423a5edb485a431236")
     model = BertForSequenceClassification(config)
-    state_dict = safetensors.torch.load_file(
-        Path(TRANSFORMERS_CACHE)
-        / "models--intfloat--e5-small-v2/snapshots/dca8b1a9dae0d4575df2bf423a5edb485a431236/model.safetensors"
+    path = hf_hub_download(
+        repo_id="intfloat/e5-small-v2",
+        filename="model.safetensors",
+        revision="dca8b1a9dae0d4575df2bf423a5edb485a431236",
     )
+    state_dict = safetensors.torch.load_file(path)
     state_dict = {k: v for k, v in state_dict.items() if k != "embeddings.position_ids"}
     model.bert.load_state_dict(state_dict, strict=True)
     return model
@@ -80,7 +79,7 @@ def calculate_accuracy(logits, labels):
     labels = labels.flatten()
     predictions = predictions[labels != -100]
     labels = labels[labels != -100]
-    accuracy = (predictions == labels).float().mean().item()
+    accuracy = (predictions == labels).astype(predictions.dtype).mean().item()
     return accuracy
 
 
@@ -113,6 +112,36 @@ def run_training(
 
         df = get_synthetic_df(nrows=nrows)
         classes = get_aisles()
+
+    elif dataset == "nyt_full_synthetic+model=gemini25flash0417.2025apr26+recipe_nlg":
+        import pandas as pd
+
+        from suplistml.data.recipe_nlg import (
+            DIRECTION_CLASS,
+            TITLE_CLASS,
+            get_recipe_nlg_training_df,
+        )
+        from suplistml.data.synthetic import get_aisles, get_synthetic_df
+
+        if nrows is not None:
+            synthetic_nrows = nrows // 2
+            recipe_nlg_nrows = nrows // 2
+        else:
+            synthetic_nrows = None
+            recipe_nlg_nrows = None
+
+        synthetic_df = get_synthetic_df(nrows=synthetic_nrows)
+
+        if recipe_nlg_nrows is None:
+            recipe_nlg_nrows = len(synthetic_df)
+
+        recipe_nlg_df = get_recipe_nlg_training_df(nrows=recipe_nlg_nrows)
+        df = (
+            pd.concat([synthetic_df, recipe_nlg_df], ignore_index=True)
+            .sample(frac=1, random_state=8385)
+            .reset_index(drop=True)
+        )
+        classes = get_aisles() + [TITLE_CLASS, DIRECTION_CLASS]
 
     elif dataset == "nyt_llm_categories+model=mistral7b+prompt=icl.2024jan29":
         from suplistml.dataset.multi_dataset import _get_joined_nyt_aisles_dfs
@@ -173,7 +202,6 @@ def run_training(
         save_total_limit=3,
         per_device_train_batch_size=per_device_train_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
-        save_safetensors=True,
     )
 
     trainer = Trainer(
