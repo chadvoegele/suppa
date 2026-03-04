@@ -6,7 +6,14 @@ from contextlib import ExitStack
 from pathlib import Path
 from unittest import TestCase
 
-from suplistml.data.recipe_nlg import get_recipe_nlg_data, get_recipe_nlg_dataframe
+from suplistml.data.recipe_nlg import (
+    DIRECTION_CLASS,
+    TITLE_CLASS,
+    Recipe,
+    get_recipe_nlg_data,
+    get_recipe_nlg_dataframe,
+    get_recipe_nlg_training_df,
+)
 
 
 class TestRecipeNlg(TestCase):
@@ -23,7 +30,7 @@ class TestRecipeNlg(TestCase):
 title,ingredients,directions,link,source,NER
 "Test Recipe","[""ingredient1"", ""ingredient2""]","[""step1"", ""step2""]",http://example.com,Test Source,"[""ner1"", ""ner2""]"
 "Another Recipe","[""flour"", ""sugar""]","[""mix"", ""bake""]",http://test.com,Another Source,"[""flour"", ""sugar""]"
-""".strip()
+""".strip()  # noqa
         self.temp_file.write(data)
         self.temp_file.flush()
         df = get_recipe_nlg_dataframe(Path(self.temp_file.name))
@@ -45,7 +52,7 @@ title,ingredients,directions,link,source,NER
         data = """
 title,ingredients,directions,link,source,NER
 "Test Recipe","[""ingredient1"", ""ingredient2""]","[""step1"", ""step2""]",http://example.com,Test Source,"[""ner1"", ""ner2""]"
-""".strip()
+""".strip()  # noqa
         self.temp_file.write(data)
         self.temp_file.flush()
         recipes = list(get_recipe_nlg_data(Path(self.temp_file.name)))
@@ -71,3 +78,51 @@ title,ingredients,directions,link,source,NER
         self.assertEqual(len(df), 2)
         self.assertEqual(df.iloc[0]["title"], "Recipe 1")
         self.assertEqual(df.iloc[1]["title"], "Recipe 2")
+
+    def test_get_recipe_nlg_training_df(self):
+        recipes = [
+            Recipe(
+                title="Pasta",
+                ingredients=["noodles", "sauce"],
+                directions=["boil noodles", "add sauce"],
+                link="http://example.com",
+                source="Test",
+                NER=["noodles", "sauce"],
+            ),
+            Recipe(
+                title="Salad",
+                ingredients=["lettuce"],
+                directions=["chop lettuce"],
+                link="http://example.com",
+                source="Test",
+                NER=["lettuce"],
+            ),
+        ]
+        df = get_recipe_nlg_training_df(recipes=recipes)
+        title_rows = df[df["aisle"] == TITLE_CLASS]
+        direction_rows = df[df["aisle"] == DIRECTION_CLASS]
+        self.assertEqual(len(title_rows), 6)  # 3 per recipe
+        self.assertIn("Pasta", title_rows["input"].values)
+        self.assertIn("# Pasta", title_rows["input"].values)
+        self.assertIn("## Pasta", title_rows["input"].values)
+        self.assertEqual(len(direction_rows), 3)  # 2 + 1
+        self.assertIn("boil noodles", direction_rows["input"].values)
+        self.assertIn("add sauce", direction_rows["input"].values)
+        self.assertIn("chop lettuce", direction_rows["input"].values)
+        self.assertTrue((df["name"] == "").all())
+        self.assertTrue((df["qty"] == "").all())
+        self.assertTrue((df["unit"] == "").all())
+
+    def test_get_recipe_nlg_training_df_nrows(self):
+        recipes = [
+            Recipe(
+                title="Pasta",
+                ingredients=["noodles"],
+                directions=["boil noodles", "drain", "serve"],
+                link="http://example.com",
+                source="Test",
+                NER=["noodles"],
+            ),
+        ]
+        df = get_recipe_nlg_training_df(recipes=recipes, nrows=4)
+        self.assertEqual(len(df), 4)

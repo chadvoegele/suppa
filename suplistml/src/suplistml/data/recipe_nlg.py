@@ -22,6 +22,9 @@ import pandas as pd
 from suplistml.data.lfs import lfs_open
 from suplistml.script import is_ipython
 
+TITLE_CLASS = "title"
+DIRECTION_CLASS = "direction"
+
 
 def get_recipe_nlg_path():
     if is_ipython():
@@ -78,3 +81,31 @@ def get_recipe_nlg_dataframe(path=None, nrows=None) -> pd.DataFrame:
     df["directions"] = df["directions"].apply(json.loads)
     df["NER"] = df["NER"].apply(json.loads)
     return df
+
+
+def get_recipe_nlg_training_df(recipes=None, nrows=None):
+    """Create a dataframe from recipe_nlg data for the multi dataset.
+
+    Returns:
+        DataFrame with columns: input, aisle, name, qty, unit (name, qty, unit are empty strings)
+    """
+    if recipes is None:
+        recipes = get_recipe_nlg_data()
+    rows = []
+
+    for i, recipe in enumerate(recipes):
+        if nrows is not None and len(rows) >= nrows:
+            break
+
+        # Add title samples with "#" and "##" prefixes
+        rows.append({"input": recipe.title, "aisle": TITLE_CLASS, "name": "", "qty": "", "unit": ""})
+        rows.append({"input": f"# {recipe.title}", "aisle": TITLE_CLASS, "name": "", "qty": "", "unit": ""})
+        rows.append({"input": f"## {recipe.title}", "aisle": TITLE_CLASS, "name": "", "qty": "", "unit": ""})
+
+        # Add direction samples
+        for direction in recipe.directions:
+            if nrows is not None and len(rows) >= nrows:
+                break
+            rows.append({"input": direction, "aisle": DIRECTION_CLASS, "name": "", "qty": "", "unit": ""})
+
+    return pd.DataFrame(rows)
