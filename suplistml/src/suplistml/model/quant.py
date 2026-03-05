@@ -11,6 +11,10 @@ import torch.nn as nn
 from torch.utils.data import Subset
 
 from suplistml.data.lfs import lfs_open
+from suplistml.data.recipe_nlg import (
+    DIRECTION_CLASS,
+    TITLE_CLASS,
+)
 from suplistml.data.synthetic import get_aisles, get_synthetic_df
 from suplistml.dataset.multi_dataset import MultiDataset
 from suplistml.model.tokenizer import (
@@ -105,11 +109,13 @@ def _get_accuracies(model, dataset):
             attention_mask=sample["attention_mask"].unsqueeze(0).to(device),
         )
         class_labels = sample["class_labels"]
-        class_accuracy = calculate_accuracy(outputs.class_logits.cpu(), class_labels.cpu())
+        class_accuracy = calculate_accuracy(
+            outputs.class_logits.detach().cpu().numpy(), class_labels.detach().cpu().numpy()
+        )
         class_accuracies.append(class_accuracy)
 
         tag_labels = sample["tag_labels"]
-        tag_accuracy = calculate_accuracy(outputs.tag_logits.cpu(), tag_labels.cpu())
+        tag_accuracy = calculate_accuracy(outputs.tag_logits.detach().cpu().numpy(), tag_labels.detach().cpu().numpy())
         tag_accuracies.append(tag_accuracy)
 
     class_accuracies = torch.tensor(class_accuracies)
@@ -132,7 +138,7 @@ def run_quantize(
     logger.info(json.dumps({k: str(v) for k, v in locals().items()}))
 
     df = get_synthetic_df(nrows=nrows)
-    classes = get_aisles()
+    classes = get_aisles() + [TITLE_CLASS, DIRECTION_CLASS]
 
     logger.info("Getting tokenizer")
     tokenizer = get_tokenizer()
@@ -144,7 +150,7 @@ def run_quantize(
     model = get_joint_model(tokenizer, tag_tokenizer, class_tokenizer)
     model = model.to("cuda")
 
-    model_root = Path("src/suplistml/models/run+1748084792")
+    model_root = Path("src/suplistml/models/run+1772630896")
     trained_model_path = model_root / "model.safetensors"
     logger.info(f"Loading model from {trained_model_path}")
     with lfs_open(trained_model_path, "rb") as g:
