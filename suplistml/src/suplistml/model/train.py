@@ -87,6 +87,7 @@ def run_training(
     output_path: Path = "__AUTO__",
     nrows: int = None,
     eval_steps: int = 16,
+    num_train_epochs: int = 20,
     global_batch_size: int = 256,
     debug: bool = False,
     dataset: str = "nyt_full_synthetic+model=gemini25flash0417.2025apr26",
@@ -97,7 +98,6 @@ def run_training(
 
     save_steps = 128
     per_device_train_batch_size = 20
-    num_train_epochs = 20
 
     if debug:
         nrows = 16
@@ -202,6 +202,7 @@ def run_training(
         save_total_limit=3,
         per_device_train_batch_size=per_device_train_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
+        report_to="mlflow",
     )
 
     trainer = Trainer(
@@ -240,6 +241,10 @@ def run_training(
 
 
 def run_predictions(output_path: Path = "__AUTO__", output_mode="flat"):
+    from suplistml.data.recipe_nlg import (
+        DIRECTION_CLASS,
+        TITLE_CLASS,
+    )
     from suplistml.data.synthetic import get_aisles
 
     setup_logging(output_path)
@@ -249,10 +254,10 @@ def run_predictions(output_path: Path = "__AUTO__", output_mode="flat"):
     logger.info("Getting tokenizer")
     tokenizer = get_tokenizer()
     tag_tokenizer = get_tag_tokenizer()
-    classes = get_aisles()
+    classes = get_aisles() + [TITLE_CLASS, DIRECTION_CLASS]
     class_tokenizer = get_class_tokenizer(classes=classes)
 
-    model_root = Path("src/suplistml/models/run+1748084792")
+    model_root = Path("src/suplistml/models/run+1772630896")
     trained_model_path = model_root / "model.safetensors"
     with lfs_open(trained_model_path, "rb") as g:
         safetensors_bytes = g.read()
@@ -296,6 +301,31 @@ def run_predictions(output_path: Path = "__AUTO__", output_mode="flat"):
         {"input": "brats"},
         {"input": "6 andouille"},
         {"input": "Noka pouches"},
+        {"input": "# Creamy Chicken Noodle Soup Recipe"},
+        {"input": "Saute"},
+        {"input": "1 medium onion"},
+        {"input": "3 medium carrots"},
+        {"input": "2 medium celery stalks"},
+        {"input": "Boil in 5 cups water"},
+        {"input": "3-4 chicken thighs, bone-in, skin-on"},
+        {"input": "6 cups chicken broth, 5 cups water Salt to taste"},
+        {"input": "Add"},
+        {"input": "1 cup corn"},
+        {"input": "Season"},
+        {"input": "3 tbsp fresh or frozen dill"},
+        {"input": "1 tsp mrs. Dash"},
+        {"input": ""},
+        {"input": "## Snap Pea Feta Salad Prep"},
+        {"input": "1. Blanch  "},
+        {"input": "   1. 1 lb snap peas  "},
+        {"input": "2. Toast  "},
+        {"input": "   1. ⅛ c chopped hazelnuts  "},
+        {"input": "3. Combine  "},
+        {"input": "   1. 5 sprigs mint  "},
+        {"input": "   2. Juice of 1 lemon  "},
+        {"input": "   3. 3 T Greek olive oil  "},
+        {"input": "   4. 6 radish, thinly sliced  "},
+        {"input": "   5. 8 oz crumbled feta"},
     ]
     cls_inputs = [f"[CLS]{row['input']}" for row in data]
     in_ids = tokenizer(cls_inputs, return_tensors="pt", padding=True, add_special_tokens=False)
