@@ -341,9 +341,12 @@ def augment_with_list_prefixes(df: pd.DataFrame, n: int = 3, seed: int = 42) -> 
         for prefix in sampled_prefixes:
             new_row = row.copy()
             new_row["input"] = prefix + row["input"]
+            new_row["other"] = prefix.strip()
             augmented_rows.append(new_row)
 
     augmented_df = pd.DataFrame(augmented_rows)
+    df = df.copy()
+    df["other"] = ""
     return pd.concat([df, augmented_df], ignore_index=True)
 
 

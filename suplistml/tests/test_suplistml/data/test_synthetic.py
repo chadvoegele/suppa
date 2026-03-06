@@ -43,6 +43,15 @@ class TestAugmentWithListPrefixes(TestCase):
         self.assertTrue((augmented["aisle"].isin(self.df["aisle"])).all())
         self.assertTrue((augmented["name"].isin(self.df["name"])).all())
 
+    def test_other_column(self):
+        result = augment_with_list_prefixes(self.df, n=3, seed=42)
+        original = result[result["input"].isin(self.df["input"])]
+        augmented = result[~result["input"].isin(self.df["input"])]
+        self.assertTrue((original["other"] == "").all())
+        self.assertTrue((augmented["other"] != "").all())
+        self.assertIn("8.", result["other"].values)
+        self.assertIn("f.", result["other"].values)
+
     def test_reproducible_with_seed(self):
         result1 = augment_with_list_prefixes(self.df, n=3, seed=0)
         result2 = augment_with_list_prefixes(self.df, n=3, seed=0)
