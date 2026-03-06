@@ -97,7 +97,7 @@ def run_training(
     logger.info(json.dumps({k: str(v) for k, v in locals().items()}))
 
     save_steps = 128
-    per_device_train_batch_size = 20
+    per_device_train_batch_size = 128
 
     if debug:
         nrows = 16
@@ -121,7 +121,7 @@ def run_training(
             TITLE_CLASS,
             get_recipe_nlg_training_df,
         )
-        from suplistml.data.synthetic import get_aisles, get_synthetic_df
+        from suplistml.data.synthetic import augment_with_list_prefixes, get_aisles, get_synthetic_df
 
         if nrows is not None:
             synthetic_nrows = nrows // 2
@@ -131,6 +131,7 @@ def run_training(
             recipe_nlg_nrows = None
 
         synthetic_df = get_synthetic_df(nrows=synthetic_nrows)
+        synthetic_df = augment_with_list_prefixes(synthetic_df)
 
         if recipe_nlg_nrows is None:
             recipe_nlg_nrows = len(synthetic_df)
@@ -160,6 +161,18 @@ def run_training(
 
     logger.info("Getting data")
     dataset = MultiDataset(tokenizer, tag_tokenizer, class_tokenizer, nrows=nrows, df=df, seqlen=256)
+
+    should_run_dataset_check = False
+    if should_run_dataset_check:
+        logger.info("Checking dataset")
+        data_collator = torch.utils.data.default_collate
+        data_loader = torch.utils.data.DataLoader(
+            dataset, batch_size=per_device_train_batch_size, collate_fn=data_collator
+        )
+        n_batches = len(data_loader)
+        for i, batch in enumerate(data_loader):
+            logger.info(json.dumps({**{"batch": i, "total": n_batches}, **{k: v.shape for k, v in batch.items()}}))
+
     model = get_joint_model(tokenizer, tag_tokenizer, class_tokenizer)
 
     model.config.save_pretrained(output_path / "config")
@@ -272,32 +285,32 @@ def run_predictions(output_path: Path = "__AUTO__", output_mode="flat"):
     model.eval()
     model.load_state_dict(state_dict, strict=True)
     data = [
-        {"input": "1 cup dried beans"},
-        {"input": "red apples"},
-        {"input": "2 green apples"},
-        {"input": "2 pears"},
-        {"input": "10 green beans"},
-        {"input": "1 pound ground beef"},
+        {"input": "1. 1 cup dried beans"},
+        {"input": "2. red apples"},
+        {"input": "3. 2 green apples"},
+        {"input": "4. 2 pears"},
+        {"input": "5. 10 green beans"},
+        {"input": "6. 1 pound ground beef"},
         {"input": "1 tablespoon flour"},
         {"input": "6 radishes"},
         {"input": "133g masa harina"},
-        {"input": "187g water"},
-        {"input": "1 avocado"},
-        {"input": "Salt"},
-        {"input": "1 clove garlic, minced"},
-        {"input": "Juice from 1 lime"},
-        {"input": "2 cups basil leaves"},
-        {"input": "1 cup Parmesan cheese"},
-        {"input": "¼ cup pine nuts"},
-        {"input": "2 garlic cloves"},
-        {"input": "½ teaspoon fine sea salt"},
-        {"input": "1 cup extra-virgin olive oil"},
+        {"input": "10. 187g water"},
+        {"input": "11. 1 avocado"},
+        {"input": "12. Salt"},
+        {"input": "13. 1 clove garlic, minced"},
+        {"input": "14. Juice from 1 lime"},
+        {"input": "15. 2 cups basil leaves"},
+        {"input": "16. 1 cup Parmesan cheese"},
+        {"input": "17. ¼ cup pine nuts"},
+        {"input": "18. 2 garlic cloves"},
+        {"input": "1. ½ teaspoon fine sea salt"},
+        {"input": "1. 1 cup extra-virgin olive oil"},
         {"input": "2 tablespoons mayo"},
         {"input": "4-6 dates"},
         {"input": "1 tablespoon honey"},
-        {"input": "larabar"},
-        {"input": "kashi go"},
-        {"input": "kashi go peanut butter"},
+        {"input": "1. larabar"},
+        {"input": "1. kashi go"},
+        {"input": "1. kashi go peanut butter"},
         {"input": "brats"},
         {"input": "6 andouille"},
         {"input": "Noka pouches"},

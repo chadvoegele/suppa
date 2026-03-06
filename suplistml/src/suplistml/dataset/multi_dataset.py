@@ -71,6 +71,7 @@ class MultiDataset(Dataset):
             max_length=self._seqlen,
             padding="max_length",
             return_tensors="pt",
+            truncation=True,
             add_special_tokens=False,
         )
 
