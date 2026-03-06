@@ -65,9 +65,11 @@ impl Model {
         )?;
 
         let output = MetaRow {
-            text: text,
+            text,
             category: inferred.category,
             name: inferred.name,
+            qty: inferred.qty,
+            unit: inferred.unit,
         };
         return Ok(output);
     }

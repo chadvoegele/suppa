@@ -17,6 +17,8 @@ pub struct MetaRow {
     pub text: String,
     pub category: String,
     pub name: String,
+    pub qty: String,
+    pub unit: String,
 }
 
 pub fn dequantize_weights(
@@ -100,31 +102,38 @@ pub fn infer_text(
         predicted_class
     };
 
-    let name_token = "NAME";
-    let name_id = tag_tokenizer
-        .token_to_id(name_token)
-        .expect("Failed to get name token id");
     let tag_preds = output.tag_logits.i((0, ..))?.argmax(1)?;
-    let mask = tag_preds.eq(name_id)?;
-
-    let indices: Vec<u8> = mask
-        .to_vec1::<u8>()?
-        .iter()
-        .enumerate()
-        .filter_map(|(i, &flag)| if flag == 1 { Some(i as u8) } else { None })
-        .collect();
-    let nindices = indices.len();
-
     let non_cls_input_ids = input_ids.i((0, 1..))?;
-    let indices_tensor = Tensor::from_vec(indices, (nindices,), device)?;
-    let name_input_ids = non_cls_input_ids.index_select(&indices_tensor, 0)?;
-    let name = tokenizer
-        .decode(&name_input_ids.to_vec1::<u32>()?, false)
-        .map_err(|e| e.to_string())?;
+
+    let extract_tag = |tag_token: &str| -> Result<String, Box<dyn Error>> {
+        let tag_id = tag_tokenizer
+            .token_to_id(tag_token)
+            .ok_or_else(|| format!("Failed to get token id for tag '{}'", tag_token))?;
+        let mask = tag_preds.eq(tag_id)?;
+        let indices: Vec<u8> = mask
+            .to_vec1::<u8>()?
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &flag)| if flag == 1 { Some(i as u8) } else { None })
+            .collect();
+        let nindices = indices.len();
+        let indices_tensor = Tensor::from_vec(indices, (nindices,), device)?;
+        let tag_input_ids = non_cls_input_ids.index_select(&indices_tensor, 0)?;
+        let text = tokenizer
+            .decode(&tag_input_ids.to_vec1::<u32>()?, false)
+            .map_err(|e| e.to_string())?;
+        Ok(text)
+    };
+
+    let name = extract_tag("NAME")?;
+    let qty = extract_tag("QTY")?;
+    let unit = extract_tag("UNIT")?;
 
     Ok(MetaRow {
-        text: text,
+        text,
         category: class,
-        name: name,
+        name,
+        qty,
+        unit,
     })
 }
