@@ -10,6 +10,23 @@ from suplistml.data.llm import get_llm_aisles_data
 from suplistml.data.nyt import get_nyt_data
 
 
+def _find_sequence_mask(sequence, pattern, exclude_mask=None):
+    """Returns a boolean mask marking the first contiguous occurrence of pattern in sequence.
+
+    If exclude_mask is provided, skips any candidate position where any token is already marked.
+    """
+    n = sequence.size(0)
+    m = pattern.size(0)
+    mask = torch.zeros(n, dtype=torch.bool)
+    for i in range(n - m + 1):
+        if exclude_mask is not None and exclude_mask[i : i + m].any():
+            continue
+        if torch.equal(sequence[i : i + m], pattern):
+            mask[i : i + m] = True
+            return mask
+    return mask
+
+
 def _get_joined_nyt_aisles_dfs(nyt_df=None, aisles_df=None, nrows=None):
     if nyt_df is None:
         nyt_df = get_nyt_data(nrows=nrows)
@@ -77,9 +94,14 @@ class MultiDataset(Dataset):
                     assert tag_id.size(0) == 1
                     assert tag_id.size(1) == 1
                     assert tag_id[0, 0] > 1
-                    ids = self._tokenizer(value, add_special_tokens=False, return_tensors="pt")["input_ids"]
-                    tag_labels[torch.isin(in_ids["input_ids"][:, 1:], ids)] = tag_id[0, 0]
+                    ids = self._tokenizer(value, add_special_tokens=False, return_tensors="pt")["input_ids"][0]
+                    input_seq = in_ids["input_ids"][0, 1:]
+                    exclude_mask = tag_labels[0] != -100
+                    mask = _find_sequence_mask(input_seq, ids, exclude_mask=exclude_mask)
+                    tag_labels[0, mask] = tag_id[0, 0]
 
+            if "other" in row.index and len(str(row["other"])) > 0:
+                _set_tag_labels_(column_name="other", tag_name="OTHER")
             _set_tag_labels_(column_name="name", tag_name="NAME")
             _set_tag_labels_(column_name="qty", tag_name="QTY")
             _set_tag_labels_(column_name="unit", tag_name="UNIT")
