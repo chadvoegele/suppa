@@ -32,10 +32,10 @@ class TestAugmentWithListPrefixes(TestCase):
 
     def test_prefixes_applied(self):
         result = augment_with_list_prefixes(self.df, n=3, seed=42)
-        augmented_inputs = result[~result["input"].isin(self.df["input"])]["input"]
-        valid_prefixes = ["- "] + [f"{i}. " for i in range(1, 11)] + [f"{c}. " for c in "abcdefghijklm"]
-        for inp in augmented_inputs:
-            self.assertTrue(any(inp.startswith(p) for p in valid_prefixes), f"Unexpected prefix in: {inp!r}")
+        inputs = result["input"].tolist()
+        self.assertIn("8. 2 stalks celery, chopped coarse", inputs)
+        self.assertIn("f. 2 stalks celery, chopped coarse", inputs)
+        self.assertIn("5. 1 cup flour", inputs)
 
     def test_non_input_columns_unchanged(self):
         result = augment_with_list_prefixes(self.df, n=3)
