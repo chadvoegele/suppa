@@ -327,5 +327,25 @@ def get_synthetic_df(nrows: int = None):
     return df
 
 
+def augment_with_list_prefixes(df: pd.DataFrame, n: int = 3, seed: int = 42) -> pd.DataFrame:
+    numeric_prefixes = [f"{i}. " for i in range(1, 11)]
+    alpha_prefixes = [f"{c}. " for c in "abcdefghijklm"]
+    bullet_prefixes = ["- "]
+    all_prefixes = bullet_prefixes + numeric_prefixes + alpha_prefixes
+
+    rng = pd.core.common.random_state(seed)
+
+    augmented_rows = []
+    for _, row in df.iterrows():
+        sampled_prefixes = rng.choice(all_prefixes, size=n, replace=False)
+        for prefix in sampled_prefixes:
+            new_row = row.copy()
+            new_row["input"] = prefix + row["input"]
+            augmented_rows.append(new_row)
+
+    augmented_df = pd.DataFrame(augmented_rows)
+    return pd.concat([df, augmented_df], ignore_index=True)
+
+
 if __name__ == "__main__" and not is_ipython():
     script_main(globals())
