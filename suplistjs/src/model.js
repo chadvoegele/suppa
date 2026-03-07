@@ -10,14 +10,14 @@ export function Model (proxy) {
   }
 
   async function suplist (text) {
-    const textLines = text.split(/\n/).filter(l => l.length > 0).filter(l => !isComment(l))
+    const textLines = text.split(/\n/).filter(l => l.length > 0).filter(l => !isPreparedIngredient(l))
     const rows = await proxy.predict(textLines)
     const sortedRows = sortRows(rows)
     return sortedRows
   }
 
-  function isComment (line) {
-    return line.trim().startsWith('#')
+  function isPreparedIngredient (line) {
+    return line.trim().toLowerCase().includes('prepared')
   }
 
   function sortRows (rows) {

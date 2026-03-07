@@ -12,11 +12,12 @@ import { Model } from '../src/model.js'
 
 describe('suplist', function () {
   it('should suplist', async function () {
-    const text = '# Fruit Salad\n\n1 pear\n2 apples'
+    const text = '# Fruit Salad\n\n1 pear\n2 apples\nPrepared lemon juice'
     const mockProxy = {
       predict: async function (textLines) {
-        assert.deepStrictEqual(textLines, ['1 pear', '2 apples'])
+        assert.deepStrictEqual(textLines, ['# Fruit Salad', '1 pear', '2 apples'])
         return [
+          { text: '# Fruit Salad', name: '', category: 'title' },
           { text: '1 pear', name: 'pear', category: 'fruit' },
           { text: '2 apples', name: 'apple', category: 'fruit' }
         ]
@@ -25,6 +26,10 @@ describe('suplist', function () {
     const model = Model(mockProxy)
     const list = await model.suplist(text)
     const expectedList = [{
+      name: '',
+      category: 'title',
+      text: '# Fruit Salad'
+    }, {
       name: 'apple',
       category: 'fruit',
       text: '2 apples'
