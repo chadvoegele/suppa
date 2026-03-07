@@ -31,7 +31,7 @@ function concatUint8Arrays (arrays) {
 }
 
 async function getModel () {
-  const modelId = '1748084792'
+  const modelId = '1772799649'
   const tokenizer = await downloadUrl(`./model/tokenizer.${modelId}.json`)
   const tagTokenizer = await downloadUrl(`./model/tag_tokenizer.${modelId}.json`)
   const classTokenizer = await downloadUrl(`./model/class_tokenizer.${modelId}.json`)
