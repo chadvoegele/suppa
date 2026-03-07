@@ -129,12 +129,17 @@ def _get_accuracies(model, dataset):
 
 def run_quantize(
     output_path: Path = "__AUTO__",
+    model_root: Path = None,
     nrows: int = 102400,
     bits: int = 8,
     n_test_samples: int = 1024,
 ):
     setup_logging(output_path)
     seed_everything()
+
+    if model_root is None:
+        model_root = Path("src/suplistml/models/run+1772630896")
+
     logger.info(json.dumps({k: str(v) for k, v in locals().items()}))
 
     df = get_synthetic_df(nrows=nrows)
@@ -150,7 +155,6 @@ def run_quantize(
     model = get_joint_model(tokenizer, tag_tokenizer, class_tokenizer)
     model = model.to("cuda")
 
-    model_root = Path("src/suplistml/models/run+1772630896")
     trained_model_path = model_root / "model.safetensors"
     logger.info(f"Loading model from {trained_model_path}")
     with lfs_open(trained_model_path, "rb") as g:
