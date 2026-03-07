@@ -76,10 +76,12 @@ export function Renderer (document, suplist) {
 
   function renderRow (row) {
     const textSp = document.createElement('span')
-    const textNode = document.createTextNode(row.text)
-    textSp.appendChild(textNode)
+    const nParts = Math.max(row.qty.length, row.unit.length) || 1
+    const qtyUnitPart = [...Array(nParts).keys()].map(i => `${row.qty[i] || ''} ${row.unit[i] || ''}`).join(' + ').trim() || ''
+    const displayText = qtyUnitPart.length > 0 ? `${qtyUnitPart} ${row.name}` : row.text.join(' + ')
+    textSp.appendChild(document.createTextNode(displayText))
     textSp.className = 'token'
-    const hoverText = `Aisle: ${row.category}, Name: ${row.name}`
+    const hoverText = `Aisle: ${row.category}, Texts: ${row.text.join(' + ')}`
     textSp.title = hoverText
 
     const rowEl = document.createElement('li')

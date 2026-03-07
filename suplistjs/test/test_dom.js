@@ -13,8 +13,8 @@ import { Renderer } from '../src/dom.js'
 describe('render', function () {
   it('should render', function (done) {
     const fakeList = [
-      { text: '1 pear', name: 'pear', category: 'fruit' },
-      { text: '2 apples', name: 'apples', category: 'fruit' }
+      { text: ['1 pear'], name: 'pear', category: 'fruit', qty: ['1'], unit: [''] },
+      { text: ['2 apples'], name: 'apples', category: 'fruit', qty: ['2'], unit: [''] }
     ]
     const suplistMock = () => new Promise((resolve, reject) => resolve(fakeList))
 
@@ -27,8 +27,8 @@ describe('render', function () {
       const listEls = output.querySelectorAll('li')
       assert.equal(listEls.length, 2)
 
-      assert.equal(listEls[0].innerHTML, '<span class="token" title="Aisle: fruit, Name: pear">1 pear</span>')
-      assert.equal(listEls[1].innerHTML, '<span class="token" title="Aisle: fruit, Name: apples">2 apples</span>')
+      assert.equal(listEls[0].innerHTML, '<span class="token" title="Aisle: fruit, Texts: 1 pear">1 pear</span>')
+      assert.equal(listEls[1].innerHTML, '<span class="token" title="Aisle: fruit, Texts: 2 apples">2 apples</span>')
       observer.disconnect()
       done()
     })
