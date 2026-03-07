@@ -77,8 +77,9 @@ export function Renderer (document, suplist) {
   function renderRow (row) {
     const textSp = document.createElement('span')
     const nParts = Math.max(row.qty.length, row.unit.length) || 1
-    const qtyUnitPart = [...Array(nParts).keys()].map(i => `${row.qty[i] || ''} ${row.unit[i] || ''}`).join(' + ').trim() || ''
-    const displayText = qtyUnitPart.length > 0 ? `${qtyUnitPart} ${row.name}` : row.text.join(' + ')
+    const qtyUnitPart = [...Array(nParts).keys()].map(i => `${row.qty[i] || ''} ${row.unit[i] || ''}`.trim()).join(' + ').trim() || ''
+    const qtyUnitName = `${qtyUnitPart} ${row.name}`.trim()
+    const displayText = qtyUnitName.length > 0 ? qtyUnitName : row.text.join(' + ')
     textSp.appendChild(document.createTextNode(displayText))
     textSp.className = 'token'
     const hoverText = `Aisle: ${row.category}, Texts: ${row.text.join(' + ')}`
