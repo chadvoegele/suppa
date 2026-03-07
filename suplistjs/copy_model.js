@@ -50,7 +50,7 @@ function copyAndRename (filename) {
 
 ['class_tokenizer.json', 'tag_tokenizer.json', 'tokenizer.json', 'config.json'].forEach(copyAndRename)
 
-const modelSrcPath = path.join(inputDir, 'model.safetensors')
+const modelSrcPath = path.join(inputDir, 'model_w8.safetensors')
 const modelLfsSrcPath = resolveLfsFile(modelSrcPath)
 const modelDestPrefix = path.join(outputDir, `model.${tag}.safetensors.part_`)
 
