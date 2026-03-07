@@ -77,8 +77,9 @@ export function Renderer (document, suplist) {
   function renderRow (row) {
     const textSp = document.createElement('span')
     const nParts = Math.max(row.qty.length, row.unit.length) || 1
-    const qtyUnitPart = [...Array(nParts).keys()].map(i => `${row.qty[i] || ''} ${row.unit[i] || ''}`.trim()).join(' + ').trim() || ''
-    const qtyUnitName = `${qtyUnitPart} ${row.name}`.trim()
+    const qtyUnitPart = [...Array(nParts).keys()].map(i => `${row.qty[i] || ''} ${row.unit[i] || ''}`.trim() || 'Some').join(' + ').trim() || ''
+    const displayQtyUnit = qtyUnitPart === 'Some' ? '' : qtyUnitPart
+    const qtyUnitName = `${displayQtyUnit} ${row.name}`.trim()
     const displayText = qtyUnitName.length > 0 ? qtyUnitName : row.text.join(' + ')
     textSp.appendChild(document.createTextNode(displayText))
     textSp.className = 'token'
