@@ -135,7 +135,14 @@ export function Renderer (document, suplist) {
 
     const listItems = ul.querySelectorAll('li')
     const textContent = Array.from(listItems)
-      .map(li => li.textContent.trim())
+      .map(li => {
+        const text = li.textContent.trim()
+        const span = li.querySelector('span')
+        const title = span ? span.title : ''
+        const textsMatch = title.match(/Texts: (.+)$/)
+        const hoverTexts = textsMatch ? textsMatch[1] : ''
+        return hoverTexts && hoverTexts !== text ? `${text} (Texts: ${hoverTexts})` : text
+      })
       .join('\n')
 
     navigator.clipboard.writeText(textContent).then(() => {
